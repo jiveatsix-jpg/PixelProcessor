@@ -1,0 +1,441 @@
+:root {
+    --bg-color: #1A1A1A;
+    --text-color: #F0F0F0;
+    --panel-color: #2C2C2C;
+    --accent-color: #FF6B6B;
+    --select-color: #4ECDC4;
+    --shadow-color: #0b0b0b;
+    --border-color: #444444;
+
+    --font-primary: 'Press Start 2P', monospace;
+    --font-secondary: 'VT323', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-primary);
+    overflow: hidden;
+    /* Disable anti-aliasing for pure pixel look */
+    -webkit-font-smoothing: none;
+    font-size: 14px;
+}
+
+svg, img, canvas {
+    image-rendering: pixelated;
+    shape-rendering: crispEdges;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    background: none;
+    color: var(--text-color);
+}
+
+/* App Layout */
+#app {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 250px;
+    background-color: var(--panel-color);
+    border-right: 4px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    z-index: 10;
+}
+
+.logo {
+    margin-bottom: 40px;
+    text-align: center;
+    border-bottom: 4px solid var(--bg-color);
+    padding-bottom: 20px;
+}
+
+.logo-text {
+    font-size: 24px;
+    color: var(--accent-color);
+    display: block;
+    margin-bottom: 8px;
+    text-shadow: 2px 2px 0 var(--shadow-color);
+}
+
+.logo-subtext {
+    font-size: 16px;
+    color: var(--select-color);
+    text-shadow: 2px 2px 0 var(--shadow-color);
+}
+
+.sidebar nav {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.sidebar-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: var(--bg-color);
+    padding: 15px;
+    font-size: 12px;
+    text-transform: uppercase;
+    box-shadow: 4px 4px 0 var(--shadow-color);
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.sidebar-btn:hover {
+    background-color: #333;
+    color: var(--select-color);
+}
+
+.sidebar-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 var(--shadow-color);
+}
+
+.sidebar-btn.accent-btn {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    text-shadow: none;
+}
+
+.sidebar-btn.accent-btn:hover {
+    background-color: #ff8585;
+    color: var(--bg-color);
+}
+
+.separator {
+    height: 4px;
+    background-color: var(--border-color);
+    margin: 10px 0;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Toolbar */
+.toolbar {
+    height: 60px;
+    background-color: var(--panel-color);
+    border-bottom: 4px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 20px;
+}
+
+.tool-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--bg-color);
+    padding: 8px;
+    box-shadow: inset 2px 2px 0 var(--shadow-color);
+}
+
+.tool-btn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--panel-color);
+    box-shadow: 2px 2px 0 var(--shadow-color);
+    transition: background-color 0.1s;
+}
+
+.tool-btn:hover {
+    background-color: var(--select-color);
+    color: var(--bg-color);
+}
+
+.tool-btn:active, .tool-btn.active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--shadow-color);
+    background-color: var(--select-color);
+    color: var(--bg-color);
+}
+
+/* Color Picker */
+.color-picker-wrapper {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    box-shadow: 2px 2px 0 var(--shadow-color);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.color-input {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    width: 50px;
+    height: 50px;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.color-indicator {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    border: 2px solid var(--border-color);
+}
+
+/* Font Selector */
+.pixel-select {
+    appearance: none;
+    background-color: var(--panel-color);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 8px 30px 8px 10px;
+    border: none;
+    box-shadow: 2px 2px 0 var(--shadow-color);
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-color) 50%), linear-gradient(135deg, var(--text-color) 50%, transparent 50%);
+    background-position: calc(100% - 15px) calc(1em + 2px), calc(100% - 10px) calc(1em + 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.pixel-select:focus {
+    outline: none;
+    background-color: #333;
+}
+
+/* Editor Area */
+.editor-container {
+    flex: 1;
+    padding: 20px 40px;
+    overflow-y: auto;
+    background-color: var(--bg-color);
+    scroll-behavior: smooth;
+}
+
+.pixel-editor {
+    width: 100%;
+    min-height: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    outline: none;
+    line-height: 1.8;
+}
+
+.pixel-editor p {
+    margin-bottom: 1em;
+}
+
+.pixel-editor:focus {
+    outline: none;
+}
+
+/* Base custom selection */
+::selection {
+    background-color: var(--select-color);
+    color: var(--bg-color);
+}
+
+/* Tables inside editor */
+.pixel-editor table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2em;
+    font-family: var(--font-secondary);
+    font-size: 18px;
+    color: var(--select-color);
+}
+
+.pixel-editor th, .pixel-editor td {
+    border: 2px solid var(--border-color);
+    padding: 10px;
+    text-align: left;
+}
+
+.pixel-editor th {
+    background-color: var(--panel-color);
+    color: var(--text-color);
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(26, 26, 26, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: var(--panel-color);
+    padding: 30px;
+    border: 4px solid var(--border-color);
+    box-shadow: 8px 8px 0 var(--shadow-color);
+}
+
+.modal-content h3 {
+    margin-bottom: 20px;
+    color: var(--accent-color);
+}
+
+.modal-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.modal-inputs label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-inputs input {
+    width: 60px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+    padding: 5px;
+    font-family: inherit;
+    text-align: center;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+}
+
+.pixel-btn {
+    padding: 10px 15px;
+    background-color: var(--bg-color);
+    box-shadow: 3px 3px 0 var(--shadow-color);
+}
+
+.pixel-btn:hover {
+    background-color: #333;
+}
+
+.pixel-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--shadow-color);
+}
+
+.pixel-btn.accent-btn {
+    background-color: var(--select-color);
+    color: var(--bg-color);
+}
+.pixel-btn.accent-btn:hover {
+    background-color: #6cf0e6;
+}
+
+/* Scrollbar styling for retro feel */
+::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
+    background-color: var(--panel-color);
+}
+::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border: 3px solid var(--panel-color);
+}
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--select-color);
+}
+
+/* Tabs Bar */
+.tabs-bar {
+    display: flex;
+    background-color: var(--panel-color);
+    border-bottom: 4px solid var(--border-color);
+    height: 40px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.tabs-bar::-webkit-scrollbar {
+    height: 8px;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #222;
+    padding: 0 15px;
+    min-width: 120px;
+    border-right: 4px solid var(--border-color);
+    cursor: pointer;
+    font-size: 12px;
+    color: #AAA;
+    transition: background-color 0.1s;
+}
+
+.tab:hover {
+    background-color: #333;
+    color: var(--text-color);
+}
+
+.tab.active {
+    background-color: var(--bg-color);
+    color: var(--select-color);
+    border-bottom: 4px solid var(--bg-color);
+    margin-bottom: -4px;
+    box-shadow: inset 0 2px 0 var(--select-color);
+}
+
+.tab-title {
+    pointer-events: none;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tab-close {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-color);
+    font-family: var(--font-secondary);
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.tab-close:hover {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+}

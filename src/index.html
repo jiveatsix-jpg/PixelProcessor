@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Word Processor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <meta name="description" content="A minimalist pixel-art word processor with dark mode and retro aesthetics.">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-text">PIXEL</span>
+                <span class="logo-subtext">WORD</span>
+            </div>
+            <nav>
+                <button id="btn-new" class="sidebar-btn" title="New Document">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <!-- New File Icon -->
+                        <path d="M2 1h8l4 4v10H2V1z"/>
+                        <path d="M9 1v4h4" fill="none" stroke="#2C2C2C" stroke-width="2"/>
+                    </svg>
+                    New
+                </button>
+                <button id="btn-save" class="sidebar-btn" title="Save to Browser">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <!-- Disk Icon -->
+                        <path d="M2 1h9l3 3v11H2V1zm2 2v4h6V3H4zm0 7v4h8v-4H4zM5 4h4v2H5V4zm1 8h4v1H6v-1z"/>
+                    </svg>
+                    Save
+                </button>
+                <div class="separator"></div>
+                <button id="btn-export" class="sidebar-btn accent-btn" title="Export to .txt">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <!-- Download Disk Icon with arrow -->
+                        <path d="M4 11v2h8v-2h2v4H2v-4h2zm4-9v6H6l2 3 2-3H8V2z"/>
+                    </svg>
+                    Export .TXT
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Toolbar -->
+            <header class="toolbar">
+                <div class="tool-group">
+                    <button id="btn-bold" class="tool-btn" title="Bold">
+                        <span style="font-weight: bold; font-family: 'Press Start 2P', monospace;">B</span>
+                    </button>
+                    <button id="btn-italic" class="tool-btn" title="Italic">
+                        <span style="font-style: italic; font-family: 'VT323', monospace; font-size: 1.2rem;">I</span>
+                    </button>
+                </div>
+
+                <div class="tool-group">
+                    <div class="color-picker-wrapper" title="Text Color">
+                        <input type="color" id="text-color" class="color-input" value="#F0F0F0">
+                        <div class="color-indicator"></div>
+                    </div>
+                </div>
+
+                <div class="tool-group">
+                    <button id="btn-align-left" class="tool-btn" title="Align Left">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M2 3h12v2H2zm0 4h8v2H2zm0 4h12v2H2z"/>
+                        </svg>
+                    </button>
+                    <button id="btn-align-center" class="tool-btn" title="Align Center">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M2 3h12v2H2zm2 4h8v2H4zm-2 4h12v2H2z"/>
+                        </svg>
+                    </button>
+                    <button id="btn-align-right" class="tool-btn" title="Align Right">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M2 3h12v2H2zm4 4h8v2H6zm-4 4h12v2H2z"/>
+                        </svg>
+                    </button>
+                    <button id="btn-align-justify" class="tool-btn" title="Justify">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M2 3h12v2H2zm0 4h12v2H2zm0 4h12v2H2z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="tool-group font-selector">
+                    <select id="font-family" class="pixel-select" title="Select Font">
+                        <option value="'Press Start 2P', monospace" style="font-family: 'Press Start 2P', monospace;">Press Start 2P</option>
+                        <option value="'VT323', monospace" style="font-family: 'VT323', monospace;">VT323</option>
+                    </select>
+                </div>
+
+                <div class="tool-group">
+                    <button id="btn-image" class="tool-btn action-btn" title="Insert Image">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M2 2h12v12H2V2zm2 2v8h8V4H4zm1 6l2-3 2 2 1-2 2 3H5zm0-4h2v2H5V6z"/>
+                        </svg>
+                    </button>
+                    <button id="btn-table" class="tool-btn action-btn" title="Insert Table">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M2 2h12v12H2V2zm2 2v3h3V4H4zm5 0v3h3V4H9zM4 9v3h3V9H4zm5 0v3h3V9H9z"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Tabs Bar -->
+            <div id="tabs-bar" class="tabs-bar"></div>
+
+            <input type="file" id="image-upload" accept="image/*" style="display: none;">
+
+            <!-- Editor -->
+            <div class="editor-container">
+                <div id="editor" contenteditable="true" spellcheck="true" lang="es" class="pixel-editor">
+                    <p>Start typing...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Table Insertion -->
+    <div id="table-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Insert Table</h3>
+            <div class="modal-inputs">
+                <label>Rows: <input type="number" id="table-rows" value="3" min="1" max="20"></label>
+                <label>Cols: <input type="number" id="table-cols" value="3" min="1" max="10"></label>
+            </div>
+            <div class="modal-actions">
+                <button id="btn-cancel-table" class="pixel-btn">Cancel</button>
+                <button id="btn-confirm-table" class="pixel-btn accent-btn">Insert</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
