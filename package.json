@@ -4,6 +4,8 @@
   "description": "",
   "main": "app.js",
   "scripts": {
+    "serve": "npx --yes serve -l 1420 src",
+    "start": "npx tauri dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

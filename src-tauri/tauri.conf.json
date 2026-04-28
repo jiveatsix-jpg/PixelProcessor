@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.pixelprocessor.app",
   "build": {
+    "beforeDevCommand": "npm run serve",
     "frontendDist": "../src",
     "devUrl": "http://localhost:1420"
   },
