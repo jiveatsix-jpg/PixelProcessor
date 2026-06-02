@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.pixelprocessor.app",
   "build": {
-    "beforeDevCommand": "npm run serve",
-    "frontendDist": "../src",
-    "devUrl": "http://localhost:1420"
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
   },
   "app": {
     "withGlobalTauri": true,
@@ -19,9 +19,9 @@
         "fullscreen": false
       }
     ],
-    "security": {
-      "csp": null
-    }
+      "security": {
+        "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self';"
+      }
   },
   "bundle": {
     "active": true,

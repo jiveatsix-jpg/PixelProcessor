@@ -34,4 +34,25 @@ document.addEventListener('DOMContentLoaded', () => {
     safeInit('Persistence', () => initPersistence(editor));
     safeInit('PdfExport',   () => initPdfExport(editor));
     safeInit('Zoom',        () => initZoom(document.getElementById('editor-container')));
+
+    // ── Reading Mode Logic ──────────────────────────────────────────────────
+    const btnReadMode = document.getElementById('btn-read-mode');
+    const btnExitReadMode = document.getElementById('btn-exit-read-mode');
+    
+    if (btnReadMode && btnExitReadMode) {
+        const toggleReadMode = (enable) => {
+            if (enable) {
+                document.body.classList.add('reading-mode');
+                editor.setAttribute('contenteditable', 'false');
+                document.querySelectorAll('.page-content').forEach(p => p.setAttribute('contenteditable', 'false'));
+            } else {
+                document.body.classList.remove('reading-mode');
+                editor.setAttribute('contenteditable', 'true');
+                document.querySelectorAll('.page-content').forEach(p => p.setAttribute('contenteditable', 'true'));
+            }
+        };
+
+        btnReadMode.addEventListener('click', () => toggleReadMode(true));
+        btnExitReadMode.addEventListener('click', () => toggleReadMode(false));
+    }
 });

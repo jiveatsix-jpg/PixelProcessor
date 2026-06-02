@@ -2,22 +2,21 @@
 // Bold, Italic, Highlight, Alignment, Font Family, Font Size, Text Color + Palette
 
 import { $, $q } from '../utils/dom.js';
+import { formatCommand } from '../utils/formatting.js';
 import { openColorPicker } from './colorPicker.js';
 import { state, savePaletteToStorage } from '../state.js';
-import { DEFAULT_PALETTE, LS_KEYS } from '../config.js';
+import { DEFAULT_PALETTE } from '../config.js';
 
 let _editor = null;
 
 const execCmd = (cmd, value = null) => {
-    // We don't want the button to take focus, but if it did, 
-    // we should apply the command to the active element.
-    document.execCommand(cmd, false, value);
-    
-    // In paged mode, we want to keep focus in the current page
+    formatCommand(cmd, value);
+
+    // Keep focus in the current page in paged mode
     const sel = window.getSelection();
     if (sel.rangeCount > 0) {
-        const node = sel.anchorNode.parentElement;
-        const page = node.closest('.page-content');
+        const node = sel.anchorNode?.parentElement;
+        const page = node?.closest?.('.page-content');
         if (page) page.focus();
     }
 };
@@ -25,18 +24,18 @@ const execCmd = (cmd, value = null) => {
 export function initFormatting(editor) {
     _editor = editor;
 
-    // Undo / Redo
-    $('btn-undo').addEventListener('click', () => execCmd('undo'));
-    $('btn-redo').addEventListener('click', () => execCmd('redo'));
+    // Undo / Redo (browser native)
+    $('btn-undo').addEventListener('click', () => document.execCommand('undo'));
+    $('btn-redo').addEventListener('click', () => document.execCommand('redo'));
 
     // Basic commands
-    $('btn-bold')           .addEventListener('click', () => execCmd('bold'));
-    $('btn-italic')         .addEventListener('click', () => execCmd('italic'));
-    $('btn-highlight')      .addEventListener('click', () => execCmd('hiliteColor', 'yellow'));
-    $('btn-align-left')     .addEventListener('click', () => execCmd('justifyLeft'));
-    $('btn-align-center')   .addEventListener('click', () => execCmd('justifyCenter'));
-    $('btn-align-right')    .addEventListener('click', () => execCmd('justifyRight'));
-    $('btn-align-justify')  .addEventListener('click', () => execCmd('justifyFull'));
+    $('btn-bold')          .addEventListener('click', () => execCmd('bold'));
+    $('btn-italic')        .addEventListener('click', () => execCmd('italic'));
+    $('btn-highlight')     .addEventListener('click', () => execCmd('hiliteColor', 'yellow'));
+    $('btn-align-left')    .addEventListener('click', () => execCmd('justifyLeft'));
+    $('btn-align-center')  .addEventListener('click', () => execCmd('justifyCenter'));
+    $('btn-align-right')   .addEventListener('click', () => execCmd('justifyRight'));
+    $('btn-align-justify') .addEventListener('click', () => execCmd('justifyFull'));
 
     // Font family
     $('font-family').addEventListener('change', (e) => execCmd('fontName', e.target.value));
@@ -50,7 +49,6 @@ export function initFormatting(editor) {
     const colorIndicator = $('text-color-indicator');
     const swatches       = Array.from(document.querySelectorAll('.swatch'));
 
-    // Load palette into swatches
     colorIndicator.style.backgroundColor = colorInput.value;
     swatches.forEach((swatch, i) => {
         const color = state.currentPalette[i] || DEFAULT_PALETTE[i];

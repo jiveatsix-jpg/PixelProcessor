@@ -1,17 +1,54 @@
-// ── Application State ─────────────────────────────────────────────────────────
-// Single source of truth. All modules read from / write to this object.
-// No reactivity framework — modules call each other's update functions
-// explicitly after modifying state.
+// ── Application State (Reactive Observer Pattern) ─────────────────────────────
+// Single source of truth with pub/sub for state changes.
+// Modules subscribe to specific keys and are notified on change.
 
 import { DEFAULT_PALETTE, LS_KEYS } from './config.js';
 
-export const state = {
-    /** @type {{ id: string, title: string, content: string }[]} */
-    documents  : [],
-    activeTabId: null,
-    isPagedMode: true,
+const _listeners = new Map(); // key → Set<callback>
+
+const _state = {
+    documents   : [],
+    activeTabId : null,
+    isPagedMode : true,
     currentPalette: [...DEFAULT_PALETTE],
 };
+
+/** Get a shallow clone of state (read-only snapshot). */
+export function getState() { return { ..._state }; }
+
+/** Get a specific state property. */
+export function get(key) { return _state[key]; }
+
+/** Set a state property and notify listeners. */
+export function set(key, value) {
+    const prev = _state[key];
+    _state[key] = value;
+    _notify(key, value, prev);
+}
+
+/** Mutate a nested property (e.g. push to documents array). */
+export function mutate(key, fn) {
+    fn(_state[key]);
+    _notify(key, _state[key], null);
+}
+
+/** Subscribe to changes on a specific state key. */
+export function subscribe(key, callback) {
+    if (!_listeners.has(key)) {
+        _listeners.set(key, new Set());
+    }
+    _listeners.get(key).add(callback);
+
+    // Return unsubscribe function
+    return () => {
+        _listeners.get(key)?.delete(callback);
+    };
+}
+
+/** Notify all listeners for a key. */
+function _notify(key, value, prev) {
+    _listeners.get(key)?.forEach(cb => cb(value, prev));
+}
 
 // ── Persistence helpers ───────────────────────────────────────────────────────
 
@@ -19,52 +56,58 @@ export function loadStateFromStorage() {
     // Documents
     try {
         const raw = localStorage.getItem(LS_KEYS.DOCUMENTS);
-        if (raw) state.documents = JSON.parse(raw);
-    } catch { state.documents = []; }
+        if (raw) _state.documents = JSON.parse(raw);
+    } catch { _state.documents = []; }
 
-    // Legacy migration from old single-document format
+    // Legacy migration
     const legacy = localStorage.getItem(LS_KEYS.OLD_CONTENT);
-    if (legacy && state.documents.length === 0) {
-        state.documents = [{ id: Date.now().toString(), title: 'Document 1', content: legacy }];
+    if (legacy && _state.documents.length === 0) {
+        _state.documents = [{ id: Date.now().toString(), title: 'Document 1', content: legacy }];
         localStorage.removeItem(LS_KEYS.OLD_CONTENT);
     }
 
-    if (state.documents.length === 0) {
-        state.documents = [{ id: Date.now().toString(), title: 'Document 1', content: '<p></p>' }];
+    if (_state.documents.length === 0) {
+        _state.documents = [{ id: Date.now().toString(), title: 'Document 1', content: '<p></p>' }];
     }
 
-    state.activeTabId = state.documents[0].id;
+    _state.activeTabId = _state.documents[0].id;
 
     // Palette
     try {
         const pal = localStorage.getItem(LS_KEYS.PALETTE);
-        if (pal) state.currentPalette = JSON.parse(pal);
+        if (pal) _state.currentPalette = JSON.parse(pal);
     } catch { /* keep default */ }
 
-    // Page mode is now forced to true
-    state.isPagedMode = true;
+    _state.isPagedMode = true;
+    _notify('all', _state, null);
 }
 
 export function saveDocumentsToStorage() {
-    localStorage.setItem(LS_KEYS.DOCUMENTS, JSON.stringify(state.documents));
+    localStorage.setItem(LS_KEYS.DOCUMENTS, JSON.stringify(_state.documents));
 }
 
 export function savePaletteToStorage() {
-    localStorage.setItem(LS_KEYS.PALETTE, JSON.stringify(state.currentPalette));
+    localStorage.setItem(LS_KEYS.PALETTE, JSON.stringify(_state.currentPalette));
 }
 
-/** Register a function that returns the current raw text (used by pageMode) */
+// ── Content sync ──────────────────────────────────────────────────────────────
+
 let _rawTextGetter = null;
 export function registerRawTextGetter(fn) { _rawTextGetter = fn; }
 
-/** Updates the in-memory content of the active tab from the live editor DOM */
 export function syncActiveTabContent(editor) {
-    const doc = state.documents.find(d => d.id === state.activeTabId);
+    const doc = _state.documents.find(d => d.id === _state.activeTabId);
     if (!doc) return;
 
-    if (state.isPagedMode && _rawTextGetter) {
+    if (_state.isPagedMode && _rawTextGetter) {
         doc.content = _rawTextGetter();
     } else {
         doc.content = editor.innerHTML;
     }
+    _notify('documents', _state.documents, null);
 }
+
+// ── Backwards compatibility: export state object for modules that read directly ─
+// Modules can still read `state.documents` directly, but mutations should
+// go through `set()` / `mutate()` for reactivity.
+export { _state as state };

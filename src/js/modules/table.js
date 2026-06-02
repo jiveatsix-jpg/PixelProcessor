@@ -19,6 +19,7 @@ let dragStartY        = 0;
 let tableInitMarginX  = 0;
 let tableInitMarginY  = 0;
 let selectedTableNode = null;
+let _handle           = null;
 
 // Resize state
 let resizingCell       = null;
@@ -42,23 +43,23 @@ export function initTable(editor) {
     $('btn-del-table').addEventListener('click', _delTable);
 
     // Drag handle
-    const handle = $('table-drag-handle');
-    if (handle) handle.addEventListener('mousedown', _onHandleMouseDown);
+    _handle = $('table-drag-handle');
+    if (_handle) _handle.addEventListener('mousedown', _onHandleMouseDown);
 
     // Table style config modal
     _initStyleModal();
 
-    // Global events
-    editor.addEventListener('mousemove', _onEditorMouseMove);
-    editor.addEventListener('mousedown', _onEditorMouseDown);
+    // Global events - listen on container to support paged mode
+    const container = $('editor-container');
+    container.addEventListener('mousemove', _onEditorMouseMove);
+    container.addEventListener('mousedown', _onEditorMouseDown);
     document.addEventListener('mousemove', _onDocMouseMove);
     document.addEventListener('mouseup',   _onDocMouseUp);
     document.addEventListener('click',     _onDocClick);
     document.addEventListener('keydown',   _onDocKeyDown);
-    $('editor-container').addEventListener('scroll', _updateHandlePos);
+    container.addEventListener('scroll', _updateHandlePos);
 
-    // Selection tracking - Listen on container to support paged mode pages
-    const container = $('editor-container');
+    // Selection tracking
     container.addEventListener('keyup',   checkTableContext);
     container.addEventListener('mouseup', checkTableContext);
     container.addEventListener('click',   checkTableContext);
@@ -148,11 +149,11 @@ export function checkTableContext() {
         activeCell  = cell;
         activeRow   = cell.closest('tr');
         activeTable = cell.closest('table');
-        tableTools.style.display = 'flex';
+        $('table-tools').style.display = 'flex';
         _updateHandlePos();
     } else {
-        tableTools.style.display = 'none';
-        handle.style.display     = 'none';
+        $('table-tools').style.display = 'none';
+        if (_handle) _handle.style.display = 'none';
         activeTable = null;
     }
 }
@@ -160,14 +161,16 @@ export function checkTableContext() {
 // ── Handle Position ───────────────────────────────────────────────────────────
 
 function _updateHandlePos() {
-    if (!activeTable) return;
-    const container    = $('editor-container');
-    const cRect        = container.getBoundingClientRect();
-    const tRect        = activeTable.getBoundingClientRect();
-    const handle       = $('table-drag-handle');
-    handle.style.top   = (tRect.top  - cRect.top  + container.scrollTop  - 24) + 'px';
-    handle.style.left  = (tRect.left - cRect.left + container.scrollLeft - 24) + 'px';
-    handle.style.display = 'flex';
+    if (!activeTable || !_handle) return;
+    const parent = activeTable.offsetParent || document.body;
+    
+    if (_handle.parentNode !== parent) {
+        parent.appendChild(_handle);
+    }
+    
+    _handle.style.top   = (activeTable.offsetTop - 24) + 'px';
+    _handle.style.left  = (activeTable.offsetLeft - 24) + 'px';
+    _handle.style.display = 'flex';
 }
 
 // ── Drag ──────────────────────────────────────────────────────────────────────
@@ -179,12 +182,7 @@ function _onHandleMouseDown(e) {
     dragStartY      = e.clientY;
 
     if (activeTable.style.position !== 'absolute') {
-        const tRect = activeTable.getBoundingClientRect();
-        const eRect = _editor.getBoundingClientRect();
-        activeTable.style.position = 'absolute';
-        activeTable.style.left     = (tRect.left - eRect.left) + 'px';
-        activeTable.style.top      = (tRect.top  - eRect.top)  + 'px';
-        activeTable.style.margin   = '0';
+        _makeFloating(activeTable);
     }
 
     tableInitMarginX = parseFloat(activeTable.style.left) || 0;
@@ -196,6 +194,19 @@ function _onHandleMouseDown(e) {
     }
     selectedTableNode = activeTable;
     selectedTableNode.classList.add('selected-for-deletion');
+}
+
+function _makeFloating(table) {
+    const tRect = table.getBoundingClientRect();
+    const parent = table.closest('.page-content') || document.getElementById('editor-container');
+    const pRect = parent.getBoundingClientRect();
+    
+    table.style.position = 'absolute';
+    table.style.zIndex   = '50';
+    table.style.margin   = '0';
+    // Position relative to parent page content
+    table.style.left = (tRect.left - pRect.left + parent.scrollLeft) + 'px';
+    table.style.top  = (tRect.top - pRect.top + parent.scrollTop) + 'px';
 }
 
 function _onDocMouseMove(e) {
@@ -218,19 +229,21 @@ function _onEditorMouseMove(e) {
         return;
     }
     const cell = e.target.closest('th, td');
+    const container = $('editor-container');
     if (cell && activeTable === cell.closest('table')) {
         const rect = cell.getBoundingClientRect();
-        _editor.style.cursor = (e.clientX > rect.right - 8 && e.clientX <= rect.right)
-            ? 'col-resize' : 'text';
-        cell.dataset.resizable = _editor.style.cursor === 'col-resize' ? 'true' : 'false';
+        const isEdge = e.clientX > rect.right - 8 && e.clientX <= rect.right;
+        container.style.cursor = isEdge ? 'col-resize' : '';
+        cell.dataset.resizable = isEdge ? 'true' : 'false';
     } else {
-        _editor.style.cursor = 'text';
+        container.style.cursor = '';
     }
 }
 
 function _onEditorMouseDown(e) {
     const cell = e.target.closest('th, td');
-    if (cell && cell.dataset.resizable === 'true' && _editor.style.cursor === 'col-resize') {
+    const container = $('editor-container');
+    if (cell && cell.dataset.resizable === 'true' && container.style.cursor === 'col-resize') {
         resizingCell  = cell;
         resizingStartX = e.clientX;
         const table = cell.closest('table');
@@ -247,8 +260,46 @@ function _onEditorMouseDown(e) {
 // ── Global Mouse Up / Click / Keydown ─────────────────────────────────────────
 
 function _onDocMouseUp() {
-    if (isDraggingTable) { isDraggingTable = false; syncActiveTabContent(_editor); }
-    if (resizingCell)    { resizingCell = null; _editor.style.cursor = 'text'; syncActiveTabContent(_editor); }
+    if (isDraggingTable && activeTable) { 
+        isDraggingTable = false; 
+
+        // Reparenting logic for paged mode
+        const container = document.getElementById('editor-container');
+        if (container.classList.contains('paged-mode')) {
+            const tRect = activeTable.getBoundingClientRect();
+            const pages = container.querySelectorAll('.page-content');
+            let targetPage = null;
+            let maxOverlap = 0;
+
+            for (const page of pages) {
+                const pRect = page.getBoundingClientRect();
+                const overlapStart = Math.max(tRect.top, pRect.top);
+                const overlapEnd   = Math.min(tRect.bottom, pRect.bottom);
+                const overlap      = Math.max(0, overlapEnd - overlapStart);
+                
+                if (overlap > maxOverlap) {
+                    maxOverlap = overlap;
+                    targetPage = page;
+                }
+            }
+
+            if (targetPage && activeTable.parentElement !== targetPage) {
+                targetPage.appendChild(activeTable);
+                const tpRect = targetPage.getBoundingClientRect();
+                const newTop = tRect.top - tpRect.top;
+                const newLeft = tRect.left - tpRect.left;
+                activeTable.style.top = newTop + 'px';
+                activeTable.style.left = newLeft + 'px';
+            }
+        }
+
+        syncActiveTabContent(_editor); 
+    }
+    if (resizingCell) { 
+        resizingCell = null; 
+        $('editor-container').style.cursor = ''; 
+        syncActiveTabContent(_editor); 
+    }
 }
 
 function _onDocClick(e) {

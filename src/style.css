@@ -278,6 +278,7 @@ button {
 /* Editor Area */
 .editor-container {
     flex: 1;
+    position: relative;
     padding: 20px 40px;
     overflow-y: auto;
     background-color: var(--bg-color);
@@ -300,6 +301,11 @@ button {
 
 .pixel-editor:focus {
     outline: none;
+}
+
+/* Hide original editor in paged mode */
+.editor-container.paged-mode #editor {
+    display: none;
 }
 
 /* Paged Mode Styles */
@@ -636,4 +642,72 @@ button {
 .animated-color {
     animation: chroma-morph linear infinite;
     animation-duration: var(--anim-duration, 1s);
+}
+
+/* Image Interaction */
+img {
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.drop-indicator {
+    height: 4px;
+    background: var(--select-color);
+    position: absolute;
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: 0 0 10px var(--select-color), 0 0 5px rgba(255,255,255,0.5);
+    transition: top 0.1s ease, width 0.1s ease;
+    border-radius: 2px;
+}
+
+/* Reading Mode */
+body.reading-mode .sidebar,
+body.reading-mode .toolbar,
+body.reading-mode .tabs-bar {
+    display: none !important;
+}
+
+body.reading-mode .main-content {
+    margin-left: 0;
+    width: 100%;
+}
+
+body.reading-mode .editor-container {
+    padding-top: 60px;
+    padding-bottom: 60px;
+}
+
+body.reading-mode .page-content {
+    cursor: default;
+}
+
+body.reading-mode .pixel-overlay,
+body.reading-mode .table-drag-handle {
+    display: none !important;
+}
+
+.exit-reading-mode {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    font-size: 16px;
+    padding: 8px 16px;
+    background: var(--bg-color);
+    border: 2px solid var(--border-color);
+    color: var(--text-color);
+    cursor: pointer;
+    box-shadow: 4px 4px 0 var(--shadow-color);
+    font-family: var(--font-secondary);
+}
+
+.exit-reading-mode:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+body.reading-mode .exit-reading-mode {
+    display: block;
 }

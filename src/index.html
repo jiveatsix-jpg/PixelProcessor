@@ -11,7 +11,6 @@
     <meta name="description" content="A minimalist pixel-art word processor with dark mode and retro aesthetics.">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -187,6 +186,9 @@
                             <input type="hidden" id="glow-color-input" class="color-input" value="#FFFFFF">
                             <div class="color-indicator" id="glow-color-indicator"></div>
                         </div>
+                        <button id="btn-read-mode" class="tool-btn action-btn" title="Vista de Lectura">
+                            📖
+                        </button>
                         <button id="btn-image" class="tool-btn action-btn" title="Insertar Imagen">
                             🖼️
                         </button>
@@ -234,6 +236,9 @@
             </div>
         </main>
     </div>
+
+    <!-- Exit Reading Mode Button -->
+    <button id="btn-exit-read-mode" class="exit-reading-mode">Salir de Vista de Lectura</button>
 
     <!-- Modal for Table Insertion -->
     <div id="table-modal" class="modal hidden">
