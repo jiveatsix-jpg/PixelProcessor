@@ -2,7 +2,7 @@
 // Initializes all modules in dependency order.
 
 import { loadStateFromStorage } from './state.js';
-import { initTabs, initDocumentButtons } from './modules/tabs.js';
+import { initTabs, initDocumentButtons, newGridDocument } from './modules/tabs.js';
 import { initFormatting } from './modules/formatting.js';
 import { initEffects } from './modules/effects.js';
 import { initPageMode } from './modules/pageMode.js';
@@ -34,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
     safeInit('Persistence', () => initPersistence(editor));
     safeInit('PdfExport',   () => initPdfExport(editor));
     safeInit('Zoom',        () => initZoom(document.getElementById('editor-container')));
+
+    const btnNewGrid = document.getElementById('btn-new-grid');
+    if (btnNewGrid) btnNewGrid.addEventListener('click', newGridDocument);
 
     // ── Reading Mode Logic ──────────────────────────────────────────────────
     const btnReadMode = document.getElementById('btn-read-mode');

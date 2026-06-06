@@ -12,6 +12,7 @@ let _savedRange = null;
 
 // Interaction State
 let _isDragging = false;
+let _isResizing = false;
 let _dragStart = { x: 0, y: 0 };
 let _imgStart  = { x: 0, y: 0, w: 0, h: 0 };
 

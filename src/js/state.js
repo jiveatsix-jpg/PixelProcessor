@@ -67,8 +67,16 @@ export function loadStateFromStorage() {
     }
 
     if (_state.documents.length === 0) {
-        _state.documents = [{ id: Date.now().toString(), title: 'Document 1', content: '<p></p>' }];
+        _state.documents = [{ id: Date.now().toString(), title: 'Document 1', type: 'word', content: '<p></p>' }];
     }
+
+    // Ensure legacy docs get a type
+    _state.documents.forEach(d => {
+        if (!d.type) d.type = 'word';
+        if (d.type === 'grid' && d.grid && !d.grid.fontFamily) {
+            d.grid.fontFamily = "'VT323', monospace";
+        }
+    });
 
     _state.activeTabId = _state.documents[0].id;
 
@@ -90,6 +98,30 @@ export function savePaletteToStorage() {
     localStorage.setItem(LS_KEYS.PALETTE, JSON.stringify(_state.currentPalette));
 }
 
+// ── Saved Palettes (named) ──────────────────────────────────────────────────
+
+/** Load all named palettes from storage. Returns { name: ['#hex', ...] } */
+export function loadSavedPalettes() {
+    try {
+        const raw = localStorage.getItem(LS_KEYS.SAVED_PALETTES);
+        return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+}
+
+/** Save a named palette (upsert). */
+export function savePalette(name, colors) {
+    const palettes = loadSavedPalettes();
+    palettes[name] = [...colors];
+    localStorage.setItem(LS_KEYS.SAVED_PALETTES, JSON.stringify(palettes));
+}
+
+/** Delete a named palette. */
+export function deleteSavedPalette(name) {
+    const palettes = loadSavedPalettes();
+    delete palettes[name];
+    localStorage.setItem(LS_KEYS.SAVED_PALETTES, JSON.stringify(palettes));
+}
+
 // ── Content sync ──────────────────────────────────────────────────────────────
 
 let _rawTextGetter = null;
@@ -98,6 +130,11 @@ export function registerRawTextGetter(fn) { _rawTextGetter = fn; }
 export function syncActiveTabContent(editor) {
     const doc = _state.documents.find(d => d.id === _state.activeTabId);
     if (!doc) return;
+
+    if (doc.type === 'grid') {
+        // Grid content is synced directly by the grid module
+        return;
+    }
 
     if (_state.isPagedMode && _rawTextGetter) {
         doc.content = _rawTextGetter();

@@ -1,20 +1,17 @@
-// ── Page Mode Engine (ResizeObserver-based) ───────────────────────────────────
-// Each page is a real contentEditable div. The browser does the actual layout.
-// ResizeObserver detects overflow, and content is moved between pages.
-// No estimation, no heuristics — pure DOM measurement.
+// ── Page Mode Engine (Manual pages) ────────────────────────────────────────────
+// Each page is a fixed-size contentEditable div. No auto-overflow splitting.
+// User clicks "Add Page" to create a new blank page.
+// Pages clip overflow — content beyond the page bottom is hidden.
 
 import { $ } from '../utils/dom.js';
 import { syncActiveTabContent, registerRawTextGetter } from '../state.js';
-import { debounce } from '../utils/debounce.js';
 
 let _editor    = null;
 let _container = null;
-let _observers = new Map(); // pageEl → ResizeObserver
 let _rawText   = '';
 
-const TAB_SIZE    = 40; // 40px tab stops
-const PAGE_HEIGHT = 1056; // 11 inches at 96 DPI
-const DEBOUNCE_MS = 100;  // faster debounce since we're not re-rendering DOM
+const TAB_SIZE = 40; // 40px tab stops
+const MAX_LINES = 38; // max .editor-line children per page (934px / 24px)
 
 /** Initialize Page Mode. Called once at startup. */
 export function initPageMode(editor) {
@@ -27,8 +24,8 @@ export function initPageMode(editor) {
     const mX = $('page-margin-x');
     if (mY && mX) {
         _applyMargins(mY.value, mX.value);
-        mY.oninput = () => { _applyMargins(mY.value, mX.value); _recheckAllPages(); };
-        mX.oninput = () => { _applyMargins(mY.value, mX.value); };
+        mY.oninput = () => _applyMargins(mY.value, mX.value);
+        mX.oninput = () => _applyMargins(mX.value, mX.value);
     }
 
     // Build initial page structure from saved content
@@ -37,6 +34,18 @@ export function initPageMode(editor) {
 
     // Bind input events to all page content areas
     _bindPageEvents();
+
+    // Add Page button
+    const btnAddPage = $('btn-add-page');
+    if (btnAddPage) {
+        btnAddPage.addEventListener('click', addPage);
+    }
+
+    // Delete Page button
+    const btnDeletePage = $('btn-delete-page');
+    if (btnDeletePage) {
+        btnDeletePage.addEventListener('click', deletePage);
+    }
 }
 
 function _applyMargins(y, x) {
@@ -76,9 +85,9 @@ function _createPage(index = 0) {
 /** Remove a page and its observer. */
 function _removePage(pageEl) {
     const contentEl = pageEl.querySelector('.page-content');
-    if (contentEl && _observers.has(contentEl)) {
-        _observers.get(contentEl).disconnect();
-        _observers.delete(contentEl);
+    if (contentEl && contentEl._childObserver) {
+        contentEl._childObserver.disconnect();
+        delete contentEl._childObserver;
     }
     // Remove preceding gap too
     const gap = pageEl.previousElementSibling;
@@ -91,124 +100,94 @@ function _getPageContents() {
     return Array.from(_container.querySelectorAll('.page-content'));
 }
 
-// ── ResizeObserver ────────────────────────────────────────────────────────────
+// ── Observers ─────────────────────────────────────────────────────────────────
 
-/** Observe a page content area for overflow/underflow. */
+/** Watch for new children (created by contentEditable Enter) and
+ *  ensure they get the .editor-line class for styling. */
 function _observePage(contentEl) {
-    const observer = new ResizeObserver(() => {
-        _debouncedCheckOverflow(contentEl);
+    const childObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.type === 'childList') {
+                // Add .editor-line to new direct children
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType === Node.ELEMENT_NODE && node.parentElement === contentEl) {
+                        node.classList.add('editor-line');
+                    }
+                }
+            }
+        }
+        // Enforce MAX_LINES — remove excess lines from the END
+        const lines = [...contentEl.querySelectorAll('.editor-line')];
+        if (lines.length > MAX_LINES) {
+            for (let i = MAX_LINES; i < lines.length; i++) {
+                lines[i].remove();
+            }
+        }
     });
-    observer.observe(contentEl);
-    _observers.set(contentEl, observer);
+    // Observe direct children only (not subtree)
+    childObserver.observe(contentEl, { childList: true });
+    contentEl._childObserver = childObserver;
 }
 
-const _debouncedCheckOverflow = debounce((contentEl) => {
-    _checkOverflow(contentEl);
-}, DEBOUNCE_MS);
+// ── Public: Add / Delete page ──────────────────────────────────────────────
 
-/** Check if a page overflows and rebalance content. */
-function _checkOverflow(contentEl) {
-    if (!contentEl.isConnected) return;
-
-    const scrollH = contentEl.scrollHeight;
-    const clientH = contentEl.clientHeight;
-
-    if (scrollH > clientH + 2) { // 2px tolerance for sub-pixel rendering
-        _overflowToNext(contentEl);
-    } else if (scrollH < clientH * 0.5 && contentEl.children.length <= 1) {
-        // Page is nearly empty — try to merge with previous
-        _mergeWithPrevious(contentEl);
+/** Create a new blank page after the last existing page. */
+export function addPage() {
+    const pages = _container.querySelectorAll('.editor-page');
+    const idx = pages.length;
+    const contentEl = _createPage(idx);
+    if (contentEl.children.length === 0) {
+        const p = document.createElement('div');
+        p.className = 'editor-line';
+        p.innerHTML = '<br>';
+        contentEl.appendChild(p);
     }
-}
-
-/** Move overflowing content from current page to next page. */
-function _overflowToNext(contentEl) {
-    const children = Array.from(contentEl.children);
-    if (children.length <= 1) return; // nothing to move
-
-    // Find the first child that causes overflow using binary-like scan
-    let overflowStart = children.length - 1;
-    for (let i = children.length - 1; i >= 0; i--) {
-        // Temporarily hide children from i onwards and check
-        const child = children[i];
-
-        // Check if this specific child crosses the boundary
-        const childBottom = child.offsetTop + child.offsetHeight;
-        if (childBottom > contentEl.clientHeight) {
-            overflowStart = i;
-        } else {
-            break; // found the boundary
-        }
-    }
-
-    // Don't move if only the first child overflows (means content is too big)
-    if (overflowStart === 0 && children.length === 1) return;
-
-    // Check if we should move tables/images as atomic blocks
-    // If the overflow element is part of a table, move the entire table
-    if (overflowStart > 0) {
-        const prevEl = children[overflowStart - 1];
-        if (prevEl.tagName === 'TABLE' || prevEl.tagName === 'IMG') {
-            // Move the table/image too if it's the one before overflow start
-            overflowStart--;
-        }
-    }
-
-    const elementsToMove = children.slice(overflowStart);
-    if (elementsToMove.length === 0) return;
-
-    // Get or create next page
-    const pageEl = contentEl.closest('.editor-page');
-    const pages = Array.from(_container.querySelectorAll('.editor-page'));
-    const idx = pages.indexOf(pageEl);
-    let nextPageContent;
-
-    if (idx + 1 < pages.length) {
-        nextPageContent = pages[idx + 1].querySelector('.page-content');
-    } else {
-        nextPageContent = _createPage(idx + 1);
-    }
-
-    // Save selection before DOM mutation
-    const sel = _saveSelection();
-
-    // Move elements to next page (maintain order)
-    const firstInNext = nextPageContent.firstChild;
-    elementsToMove.forEach(el => {
-        nextPageContent.insertBefore(el, firstInNext);
-    });
-
-    _restoreSelection(sel);
     _updateRawText();
-
-    // Check if next page now overflows (cascade)
-    _checkOverflow(nextPageContent);
+    contentEl.focus();
+    return contentEl;
 }
 
-/** Try to merge content from a page into the previous page. */
-function _mergeWithPrevious(contentEl) {
-    const pageEl = contentEl.closest('.editor-page');
-    const pages = Array.from(_container.querySelectorAll('.editor-page'));
-    const idx = pages.indexOf(pageEl);
-    if (idx <= 0) return; // first page, can't merge up
+/** Delete the currently focused page (or last page). */
+export function deletePage() {
+    const pages = _container.querySelectorAll('.editor-page');
+    if (pages.length <= 1) return; // never delete the last page
 
-    const prevPage = pages[idx - 1];
-    const prevContent = prevPage.querySelector('.page-content');
-
-    // Check if merging would overflow previous page
-    const totalNeeded = prevContent.scrollHeight + contentEl.scrollHeight;
-    if (totalNeeded > prevContent.clientHeight + 2) return; // would overflow
-
-    const sel = _saveSelection();
-
-    // Move all children to previous page
-    while (contentEl.firstChild) {
-        prevContent.appendChild(contentEl.firstChild);
+    // Find the active page (the one with selection/cursor)
+    let targetPage = null;
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) {
+        const node = sel.anchorNode;
+        if (node) {
+            const contentEl = node.nodeType === Node.ELEMENT_NODE
+                ? node.closest('.page-content')
+                : node.parentElement?.closest('.page-content');
+            if (contentEl) {
+                targetPage = contentEl.closest('.editor-page');
+            }
+        }
     }
 
-    _removePage(pageEl);
+    // Fallback to last page
+    if (!targetPage) {
+        targetPage = pages[pages.length - 1];
+    }
+
+    const pageIdx = Array.from(pages).indexOf(targetPage);
+
+    // Move content to previous page before removing
+    if (pageIdx > 0) {
+        const prevContent = pages[pageIdx - 1].querySelector('.page-content');
+        const curContent = targetPage.querySelector('.page-content');
+        while (curContent.firstChild) {
+            prevContent.appendChild(curContent.firstChild);
+        }
+        // Focus previous page at the end
+        const lastLine = prevContent.lastElementChild;
+        if (lastLine) _setCursor(lastLine, lastLine.textContent.length);
+    }
+
+    _removePage(targetPage);
     _reindexPages();
-    _restoreSelection(sel);
     _updateRawText();
 }
 
@@ -219,8 +198,13 @@ function _buildPagesFromRawText(rawText) {
     // Clear existing pages
     const existing = _container.querySelectorAll('.editor-page, .page-break-divider');
     existing.forEach(el => el.remove());
-    _observers.forEach(obs => obs.disconnect());
-    _observers.clear();
+    // Clean up all child MutationObservers
+    _container.querySelectorAll('.page-content').forEach(el => {
+        if (el._childObserver) {
+            el._childObserver.disconnect();
+            delete el._childObserver;
+        }
+    });
 
     // Create first page
     const firstPage = _createPage(0);
@@ -239,8 +223,6 @@ function _buildPagesFromRawText(rawText) {
         firstPage.appendChild(p);
     }
 
-    // Recheck overflow (may create additional pages)
-    _checkOverflow(firstPage);
     _updateRawText();
 }
 
@@ -289,28 +271,78 @@ function _bindPageEvents() {
     _container.addEventListener('keydown', _handleKeyDown, true);
     _container.addEventListener('input', _handleInput, true);
     _container.addEventListener('paste', _handlePaste, true);
-
-    // Selection tracking for table module
-    _container.addEventListener('keyup', () => {});
-    _container.addEventListener('mouseup', () => {});
-    _container.addEventListener('click', () => {});
-}
-
-function _handlePaste(e) {
-    const target = e.target;
-    if (!target?.classList?.contains('page-content')) return;
-
-    e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-    document.execCommand('insertText', false, text);
 }
 
 function _handleInput(e) {
-    const target = e.target;
-    if (!target?.classList?.contains('page-content')) return;
+    const contentEl = e.target.closest?.('.page-content');
+    if (!contentEl) return;
+    _updateRawText();
+}
+
+function _handlePaste(e) {
+    const contentEl = e.target.closest?.('.page-content');
+    if (!contentEl) return;
+
+    e.preventDefault();
+
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    if (!text) return;
+
+    let lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    // Strip trailing empty element from trailing newline
+    if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+    if (lines.length === 0) return;
+
+    // Check limit BEFORE inserting
+    const currentLines = contentEl.querySelectorAll('.editor-line').length;
+    const allowed = MAX_LINES - currentLines;
+    if (allowed <= 0) return;
+    if (lines.length > allowed) lines = lines.slice(0, allowed);
+
+    // Get current line at cursor
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const startNode = range.startContainer.nodeType === Node.TEXT_NODE
+        ? range.startContainer.parentElement
+        : range.startContainer;
+    const currentLine = startNode.closest('.editor-line');
+    if (!currentLine) return;
+
+    // Save text before / after cursor (for splitting the current line)
+    const textBefore = currentLine.textContent.slice(0, range.startOffset);
+    const textAfter  = currentLine.textContent.slice(range.startOffset);
+    currentLine.textContent = textBefore;
+
+    // Create new line elements
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < lines.length; i++) {
+        const div = document.createElement('div');
+        div.className = 'editor-line';
+        if (lines[i] === '') {
+            div.innerHTML = '<br>';
+        } else {
+            div.textContent = lines[i];
+        }
+        frag.appendChild(div);
+    }
+
+    // Append remaining text after cursor to LAST pasted line
+    if (textAfter) {
+        const last = frag.lastChild;
+        if (last) last.textContent += textAfter;
+    }
+
+    // Insert after current line
+    const nextSibling = currentLine.nextElementSibling;
+    contentEl.insertBefore(frag, nextSibling);
+
+    // Move cursor to end of last pasted line
+    const linesEls = contentEl.querySelectorAll('.editor-line');
+    const lastLine = linesEls[linesEls.length - 1];
+    if (lastLine) _setCursor(lastLine, lastLine.textContent.length);
 
     _updateRawText();
-    _debouncedCheckOverflow(target);
 }
 
 function _handleKeyDown(e) {
@@ -329,12 +361,21 @@ function _handleKeyDown(e) {
     const pages = Array.from(_container.querySelectorAll('.editor-page'));
     const pIdx = pages.indexOf(pageEl);
 
+    // Enter: block if page already has MAX_LINES
+    if (e.key === 'Enter' && !e.shiftKey) {
+        const lineCount = contentEl.querySelectorAll('.editor-line').length;
+        console.log(`[PAGE] Enter pressed, lineCount=${lineCount}, MAX=${MAX_LINES}, block=${lineCount >= MAX_LINES}`);
+        if (lineCount >= MAX_LINES) {
+            e.preventDefault();
+            return;
+        }
+    }
+
     // Tab: insert spaces or indent
     if (e.key === 'Tab') {
         e.preventDefault();
         const lineEl = node.closest('.editor-line');
-        
-        // Improved start-of-line detection: check absolute text offset within the line
+
         let isAtStart = false;
         if (lineEl && range.collapsed) {
             const preRange = range.cloneRange();
@@ -342,7 +383,7 @@ function _handleKeyDown(e) {
             preRange.setEnd(range.startContainer, range.startOffset);
             isAtStart = preRange.toString().length === 0;
         }
-        
+
         if (lineEl && (isAtStart || e.shiftKey)) {
             _adjustIndentation(lineEl, e.shiftKey ? -1 : 1);
         } else {
@@ -374,7 +415,7 @@ function _handleKeyDown(e) {
         }
     }
 
-    // Backspace at start of first line: merge with previous page or reduce indentation
+    // Backspace at start of first line: merge with previous page
     if (e.key === 'Backspace' && range.collapsed && range.startOffset === 0) {
         const lineEl = node.closest('.editor-line');
         if (!lineEl) return;
@@ -387,7 +428,7 @@ function _handleKeyDown(e) {
             return;
         }
 
-        // Otherwise, standard merge logic
+        // Merge current page's first line into previous page
         if (lineEl && !lineEl.previousElementSibling && pIdx > 0) {
             e.preventDefault();
             const prevPage = pages[pIdx - 1];
@@ -397,13 +438,18 @@ function _handleKeyDown(e) {
 
             if (lastLine) {
                 const cursorPos = lastLine.textContent.length;
-                // Move current page's first line to previous page
                 const firstLine = contentEl.querySelector('.editor-line');
                 if (firstLine) {
                     prevContent.appendChild(firstLine);
                 }
                 _setCursor(lastLine, cursorPos);
-                _checkOverflow(prevContent);
+
+                // If current page is now empty, remove it
+                if (contentEl.children.length === 0 || 
+                    (contentEl.children.length === 1 && contentEl.querySelector('.editor-line')?.innerHTML === '<br>')) {
+                    _removePage(pageEl);
+                    _reindexPages();
+                }
             }
         }
     }
@@ -414,7 +460,7 @@ function _adjustIndentation(lineEl, direction) {
     if (!lineEl) return;
     const currentPadding = parseInt(lineEl.style.paddingLeft) || 0;
     const newPadding = Math.max(0, currentPadding + (direction * TAB_SIZE));
-    
+
     if (newPadding > 0) {
         lineEl.style.paddingLeft = newPadding + 'px';
     } else {
@@ -430,27 +476,38 @@ function _saveSelection() {
     if (!sel.rangeCount) return null;
     const range = sel.getRangeAt(0);
 
-    const lineEl = range.startContainer.closest?.('.editor-line')
-        || range.startContainer.parentElement?.closest('.editor-line');
-    if (!lineEl) return null;
+    const contentEl = range.startContainer.closest?.('.page-content');
+    if (!contentEl) return null;
 
-    const allLines = Array.from(_container.querySelectorAll('.editor-line'));
-    const lineIndex = allLines.indexOf(lineEl);
+    let childEl = range.startContainer.nodeType === Node.TEXT_NODE
+        ? range.startContainer.parentElement
+        : range.startContainer;
+
+    while (childEl && childEl.parentElement !== contentEl && childEl.parentElement?.closest('.page-content')) {
+        childEl = childEl.parentElement;
+    }
+    if (!childEl || childEl.parentElement !== contentEl) return null;
+
+    const allChildren = Array.from(_container.querySelectorAll('.page-content > *'));
+    const childIndex = allChildren.indexOf(childEl);
+    if (childIndex === -1) return null;
 
     const preRange = range.cloneRange();
-    preRange.selectNodeContents(lineEl);
+    preRange.selectNodeContents(childEl);
     preRange.setEnd(range.startContainer, range.startOffset);
     const offset = preRange.toString().length;
 
-    return { lineIndex, offset };
+    return { childIndex, offset };
 }
 
 function _restoreSelection(saved) {
     if (!saved) return;
-    const allLines = Array.from(_container.querySelectorAll('.editor-line'));
-    const lineEl = allLines[saved.lineIndex];
+
+    const allChildren = Array.from(_container.querySelectorAll('.page-content > *'));
+    const lineEl = allChildren[saved.childIndex];
     if (!lineEl) {
-        if (allLines.length > 0) _setCursor(allLines[allLines.length - 1], 0);
+        const last = allChildren[allChildren.length - 1];
+        if (last) _setCursor(last, last.textContent.length);
         return;
     }
     _setCursor(lineEl, saved.offset);
@@ -496,7 +553,6 @@ function _serializePages() {
                 const data = { src: child.src, style: child.getAttribute('style') };
                 lines.push(`[[IMG:${JSON.stringify(data)}]]`);
             } else if (child.tagName === 'TABLE') {
-                // Remove newlines from table HTML to avoid breaking the line-based format
                 lines.push(child.outerHTML.replace(/\r?\n|\r/g, ' '));
             } else if (child.nodeType === Node.ELEMENT_NODE) {
                 const html = child.innerHTML.replace(/\r?\n|\r/g, ' ');
@@ -530,12 +586,6 @@ function _reindexPages() {
     });
 }
 
-/** Recheck all pages for overflow (e.g. after margin change). */
-function _recheckAllPages() {
-    const contents = _getPageContents();
-    contents.forEach(content => _checkOverflow(content));
-}
-
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /** Render pages from raw text content. Called when switching tabs. */
@@ -547,5 +597,5 @@ export function renderPages(rawTextOverride) {
 }
 
 export function getRawText() { return _rawText; }
-export function repaginate() { _recheckAllPages(); }
-export function clearRepagination() {} // no-op in new engine
+export function repaginate() { /* no-op: manual pages */ }
+export function clearRepagination() { /* no-op */ }

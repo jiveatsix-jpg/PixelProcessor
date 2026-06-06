@@ -24,11 +24,12 @@ export const COLOR_GRID_PRESETS = [
 ];
 
 export const LS_KEYS = {
-    DOCUMENTS  : 'pixelDocuments',
-    OLD_CONTENT: 'pixelWordContent',   // legacy migration
-    PALETTE    : 'pixelPalette',
-    GLOW_COLOR : 'pixelGlowColor',
-    PAGE_MODE  : 'pixelPageMode',
-    MARGIN_Y   : 'pixelPageMarginY',
-    MARGIN_X   : 'pixelPageMarginX',
+    DOCUMENTS     : 'pixelDocuments',
+    OLD_CONTENT   : 'pixelWordContent',   // legacy migration
+    PALETTE       : 'pixelPalette',
+    SAVED_PALETTES: 'pixelSavedPalettes',
+    GLOW_COLOR    : 'pixelGlowColor',
+    PAGE_MODE     : 'pixelPageMode',
+    MARGIN_Y      : 'pixelPageMarginY',
+    MARGIN_X      : 'pixelPageMarginX',
 };

@@ -3,15 +3,15 @@
 import { state, syncActiveTabContent, saveDocumentsToStorage } from '/js/state.js';
 import { $, on } from '/js/utils/dom.js';
 import { renderPages } from '/js/modules/pageMode.js';
+import { renderGrid } from '/js/modules/grid/index.js';
 
-let _editor  = null;
-let _tabsBar = null;
+let _editor   = null;
+let _tabsBar  = null;
 
 export function initTabs(editor) {
     _editor  = editor;
     _tabsBar = $('tabs-bar');
 
-    // Delegation: single click → switch / close
     on(_tabsBar, 'click', (e) => {
         const tabEl = e.target.closest('.tab');
         if (!tabEl) return;
@@ -25,7 +25,6 @@ export function initTabs(editor) {
         }
     });
 
-    // Double-click → rename
     on(_tabsBar, 'dblclick', (e) => {
         const tabEl = e.target.closest('.tab');
         if (!tabEl) return;
@@ -38,10 +37,8 @@ export function initTabs(editor) {
         }
     });
 
-    // Autosave content on every keystroke
     on(editor, 'input', () => syncActiveTabContent(_editor));
 
-    // Timed save to localStorage (500 ms debounce via main)
     loadActiveTab();
 }
 
@@ -52,6 +49,10 @@ export function renderTabs() {
         tabEl.className  = 'tab ' + (doc.id === state.activeTabId ? 'active' : '');
         tabEl.dataset.id = doc.id;
 
+        const icon = document.createElement('span');
+        icon.className = 'tab-icon';
+        icon.textContent = doc.type === 'grid' ? '▦' : 'W';
+
         const title = document.createElement('span');
         title.className   = 'tab-title';
         title.textContent = doc.title;
@@ -61,6 +62,7 @@ export function renderTabs() {
         close.textContent = 'x';
         close.title       = 'Close Document';
 
+        tabEl.appendChild(icon);
         tabEl.appendChild(title);
         tabEl.appendChild(close);
         _tabsBar.appendChild(tabEl);
@@ -69,16 +71,30 @@ export function renderTabs() {
 
 export function loadActiveTab() {
     const doc = state.documents.find(d => d.id === state.activeTabId);
-    if (doc) {
+    if (!doc) return;
+    renderTabs();
+
+    // Show/hide editor areas based on type
+    const editorArea = document.getElementById('editor-container');
+    const gridArea   = document.getElementById('grid-area');
+    const gridToolbar = document.getElementById('grid-toolbar-group');
+
+    if (doc.type === 'grid') {
+        editorArea.style.display = 'none';
+        gridArea.style.display   = '';
+        if (gridToolbar) gridToolbar.style.display = '';
+        renderGrid(doc);
+    } else {
+        editorArea.style.display = '';
+        gridArea.style.display   = 'none';
+        if (gridToolbar) gridToolbar.style.display = 'none';
+
         if (state.isPagedMode) {
-            // Pass the raw content directly to the paged renderer
-            // so table HTML is not destroyed by innerText conversion
             renderPages(doc.content || '');
         } else {
             _editor.innerHTML = doc.content || '<p></p>';
         }
     }
-    renderTabs();
 }
 
 export function newDocument() {
@@ -87,7 +103,30 @@ export function newDocument() {
     state.documents.push({
         id     : newId,
         title  : `Document ${state.documents.length + 1}`,
+        type   : 'word',
         content: '<p></p>',
+    });
+    state.activeTabId = newId;
+    loadActiveTab();
+}
+
+export function newGridDocument() {
+    syncActiveTabContent(_editor);
+    const newId = Date.now().toString();
+    state.documents.push({
+        id    : newId,
+        title : `Sheet ${state.documents.filter(d => d.type === 'grid').length + 1}`,
+        type  : 'grid',
+        grid  : {
+            fontFamily: "'VT323', monospace",
+            headers: ['Columna A', 'Columna B', 'Columna C'],
+            rows: [['', '', '']],
+            columns: [
+                { type: 'text' },
+                { type: 'text' },
+                { type: 'text' },
+            ],
+        },
     });
     state.activeTabId = newId;
     loadActiveTab();
@@ -96,7 +135,7 @@ export function newDocument() {
 export function injectDocument(title, content) {
     syncActiveTabContent(_editor);
     const newId = Date.now().toString();
-    state.documents.push({ id: newId, title, content });
+    state.documents.push({ id: newId, title, type: 'word', content });
     state.activeTabId = newId;
     loadActiveTab();
 }
@@ -109,8 +148,7 @@ function _switchTab(docId) {
 
 function _closeTab(docId) {
     if (state.documents.length === 1) {
-        // Reset to blank instead of removing the last tab
-        state.documents = [{ id: Date.now().toString(), title: 'Document 1', content: '<p></p>' }];
+        state.documents = [{ id: Date.now().toString(), title: 'Document 1', type: 'word', content: '<p></p>' }];
         state.activeTabId = state.documents[0].id;
         loadActiveTab();
         return;
@@ -124,8 +162,8 @@ function _closeTab(docId) {
     }
 }
 
-// Wire sidebar buttons (called from main)
 export function initDocumentButtons(editor) {
+    _editor = editor;
     $('btn-new').addEventListener('click', newDocument);
 
     $('btn-save').addEventListener('click', () => {

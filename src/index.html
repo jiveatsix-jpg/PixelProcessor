@@ -23,11 +23,16 @@
             <nav>
                 <button id="btn-new" class="sidebar-btn" title="New Document">
                     <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <!-- New File Icon -->
                         <path d="M2 1h8l4 4v10H2V1z"/>
                         <path d="M9 1v4h4" fill="none" stroke="#2C2C2C" stroke-width="2"/>
                     </svg>
                     New
+                </button>
+                <button id="btn-new-grid" class="sidebar-btn" title="New Grid Sheet">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M1 2h14v12H1V2zm1 2v3h12V4H2zm0 5v3h12V9H2z"/>
+                    </svg>
+                    Grid
                 </button>
                 <button id="btn-open-file" class="sidebar-btn" title="Open .PXP File">
                     <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -121,6 +126,22 @@
                         </div>
                     </div>
 
+                    <div class="tool-group" style="border-left: 1px solid var(--border-color); padding-left: 8px; gap: 4px;">
+                        <select id="palette-select" class="pixel-input" style="width: 110px; font-size: 9px; padding: 2px 4px; text-align: center; font-family: 'Press Start 2P';">
+                            <option value="">— PALETAS —</option>
+                        </select>
+                        <button id="btn-save-palette" class="tool-btn" title="Guardar paleta actual">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M2 2v12h12V5l-3-3H2zm1 1h5v3H3V3zm6 0v3H8V3h1zM3 9h10v4H3V9z"/>
+                            </svg>
+                        </button>
+                        <button id="btn-delete-palette" class="tool-btn" title="Eliminar paleta seleccionada" style="color: var(--accent-color);">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M4 3V1h8v2h4v2h-1v10H1V5H0V3h4zm2 0h4V2H6v1zM3 5v8h10V5H3zm3 2v5H5V7h1zm2 0v5H7V7h1zm2 0v5H9V7h1z"/>
+                            </svg>
+                        </button>
+                    </div>
+
                     <div class="tool-group">
                         <button id="btn-align-left" class="tool-btn" title="Align Left">
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -208,6 +229,21 @@
                             <span style="font-family: var(--font-secondary); font-size: 12px;">X</span>
                         </div>
 
+                        <!-- Add / Delete Page -->
+                        <div style="display: flex; align-items: center; gap: 4px; border-left: 1px solid var(--border-color); padding-left: 8px; margin-left: 8px;">
+                            <button id="btn-add-page" class="tool-btn action-btn" title="Añadir Página">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" fill="none"/>
+                                </svg>
+                            </button>
+                            <button id="btn-delete-page" class="tool-btn action-btn" title="Borrar Página" style="color: var(--accent-color);">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                </svg>
+                            </button>
+                            <span style="font-family: 'Press Start 2P'; font-size: 7px; color: var(--text-color-dim);">PAGE</span>
+                        </div>
+
                     <div class="tool-group" id="table-tools" style="display: none;">
                         <button id="btn-add-row" class="tool-btn" title="Añadir Fila Abajo"><span style="font-family: var(--font-secondary); font-size: 16px;">+R</span></button>
                         <button id="btn-add-col" class="tool-btn" title="Añadir Columna Derecha"><span style="font-family: var(--font-secondary); font-size: 16px;">+C</span></button>
@@ -215,6 +251,20 @@
                         <button id="btn-del-col" class="tool-btn" title="Eliminar Columna" style="color: var(--accent-color);"><span style="font-family: var(--font-secondary); font-size: 16px;">-C</span></button>
                         <button id="btn-del-table" class="tool-btn" title="Eliminar Tabla" style="color: var(--accent-color);">🗑️</button>
                         <button id="btn-config-table" class="tool-btn" title="Estilos de Tabla">⚙️</button>
+                    </div>
+                    <div class="tool-group" id="grid-toolbar-group" style="display: none; border-left: 1px solid var(--border-color); padding-left: 8px;">
+                        <select id="grid-font-family" class="pixel-select" title="Grid Font" style="width: 120px;">
+                            <option value="'VT323', monospace" style="font-family: 'VT323', monospace;">VT323</option>
+                            <option value="'Press Start 2P', monospace" style="font-family: 'Press Start 2P', monospace;">Press Start 2P</option>
+                        </select>
+                        <span style="width: 1px; height: 20px; background: var(--border-color); margin: 0 4px; display: inline-block;"></span>
+                        <button id="btn-grid-add-row" class="tool-btn" title="Add Row"><span style="font-family: var(--font-secondary); font-size: 16px;">+R</span></button>
+                        <button id="btn-grid-add-col" class="tool-btn" title="Add Column"><span style="font-family: var(--font-secondary); font-size: 16px;">+C</span></button>
+                        <button id="btn-grid-del-row" class="tool-btn" title="Delete Row" style="color: var(--accent-color);"><span style="font-family: var(--font-secondary); font-size: 16px;">-R</span></button>
+                        <button id="btn-grid-del-col" class="tool-btn" title="Delete Column" style="color: var(--accent-color);"><span style="font-family: var(--font-secondary); font-size: 16px;">-C</span></button>
+                        <span style="width: 1px; height: 20px; background: var(--border-color); margin: 0 4px; display: inline-block;"></span>
+                        <button id="btn-grid-import-csv" class="tool-btn" title="Import CSV">📥</button>
+                        <button id="btn-grid-export-csv" class="tool-btn" title="Export CSV">📤</button>
                     </div>
                 </div>
             </header>
@@ -224,6 +274,7 @@
 
             <input type="file" id="pxp-upload" accept=".pxp" style="display: none;">
             <input type="file" id="txt-upload" accept=".txt" style="display: none;">
+            <input type="file" id="csv-upload" accept=".csv,.tsv" style="display: none;">
 
             <!-- Editor -->
             <div class="editor-container" id="editor-container" style="position: relative;">
@@ -232,6 +283,16 @@
                 </div>
                 <div id="editor" contenteditable="true" spellcheck="true" lang="es" class="pixel-editor">
                     <p>Start typing...</p>
+                </div>
+            </div>
+
+            <!-- Grid Area -->
+            <div class="grid-container" id="grid-area" style="display: none;">
+                <div class="grid-table-wrap" id="grid-table-wrap">
+                    <table class="grid-table" id="grid-table">
+                        <thead><tr id="grid-header-row"></tr></thead>
+                        <tbody id="grid-body"></tbody>
+                    </table>
                 </div>
             </div>
         </main>
