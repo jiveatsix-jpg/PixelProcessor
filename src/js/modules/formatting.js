@@ -8,6 +8,16 @@ import { state, savePaletteToStorage, loadSavedPalettes, savePalette, deleteSave
 import { DEFAULT_PALETTE } from '../config.js';
 
 let _editor = null;
+let _savedRange = null; // last non-collapsed selection range
+
+// Capture selection before it's lost (e.g., when clicking a toolbar button)
+document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (!sel.rangeCount || sel.getRangeAt(0).collapsed) return;
+    const node = sel.anchorNode?.parentElement;
+    if (!node?.closest?.('.pixel-editor, .page-content')) return;
+    _savedRange = sel.getRangeAt(0).cloneRange();
+});
 
 const execCmd = (cmd, value = null) => {
     formatCommand(cmd, value);
@@ -153,5 +163,13 @@ export function initFormatting(editor) {
 function _applyColor(color, input, indicator) {
     input.value                       = color;
     indicator.style.backgroundColor   = color;
+
+    // Restore saved selection if current one is lost (e.g., button click cleared it)
+    const sel = window.getSelection();
+    if ((!sel.rangeCount || sel.getRangeAt(0).collapsed) && _savedRange) {
+        sel.removeAllRanges();
+        sel.addRange(_savedRange);
+    }
+
     execCmd('foreColor', color);
 }
