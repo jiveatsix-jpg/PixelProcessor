@@ -4,6 +4,7 @@
 
 import { $, makeFloating, reparentToOverlappingPage } from '../utils/dom.js';
 import { syncActiveTabContent } from '../state.js';
+import { flushReflowNow } from './pageMode.js';
 
 let _editor = null;
 let _activeImg = null;
@@ -159,8 +160,8 @@ function _deleteActiveImage() {
     if (!_activeImg) return;
     const parent = _activeImg.parentElement;
     _activeImg.remove();
-    // Clean up empty paragraphs
-    if (parent && parent.tagName === 'P' && parent.innerHTML.trim() === '') {
+    // Clean up empty line wrapper (paged mode wraps images in a .editor-line div, not a <p>)
+    if (parent && parent.classList.contains('editor-line') && parent.innerHTML.trim() === '') {
         parent.remove();
     }
     _deselect();
@@ -223,11 +224,15 @@ function _setupInteractionListeners() {
         if (_isDragging && _activeImg) {
             // Smart re-parenting for Paged Mode: move the image's line wrapper
             // into whichever page it now overlaps most, keeping it visually anchored.
-            reparentToOverlappingPage(_activeImg, {
+            const targetPage = reparentToOverlappingPage(_activeImg, {
                 reparentTarget: _activeImg.closest('.editor-line'),
                 setLeft: false,
                 fallbackToFirstPage: true,
             });
+            if (targetPage) {
+                const pageIdx = Array.from(document.querySelectorAll('.page-content')).indexOf(targetPage);
+                if (pageIdx !== -1) flushReflowNow(pageIdx);
+            }
         }
 
         if (_isDragging || _isResizing) {

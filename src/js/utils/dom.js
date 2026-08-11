@@ -59,11 +59,12 @@ export function makeFloating(el, zIndex = '50') {
  * @param {HTMLElement} [reparentTarget=movedEl] - node actually moved into the new page (e.g. a wrapper around movedEl).
  * @param {boolean} [setLeft=true] - also reposition `left` (some callers only track vertical position).
  * @param {boolean} [fallbackToFirstPage=false] - if no page overlaps at all, reparent into the first page anyway.
+ * @returns {HTMLElement|null} the `.page-content` the element ended up in (whether or not it actually moved), or null if nothing overlapped and there was no fallback. Callers use this to know which page to re-paginate.
  */
 export function reparentToOverlappingPage(movedEl, { reparentTarget = movedEl, setLeft = true, fallbackToFirstPage = false } = {}) {
-    if (!reparentTarget) return;
+    if (!reparentTarget) return null;
     const pages = Array.from(document.querySelectorAll('.page-content'));
-    if (!pages.length) return;
+    if (!pages.length) return null;
 
     const rect = movedEl.getBoundingClientRect();
     let targetPage = fallbackToFirstPage ? pages[0] : null;
@@ -85,6 +86,7 @@ export function reparentToOverlappingPage(movedEl, { reparentTarget = movedEl, s
         movedEl.style.top = (rect.top - tpRect.top) + 'px';
         if (setLeft) movedEl.style.left = (rect.left - tpRect.left) + 'px';
     }
+    return targetPage;
 }
 
 /** Trigger a browser download of text content */
