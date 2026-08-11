@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Word Processor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <meta name="description" content="A minimalist pixel-art word processor with dark mode and retro aesthetics.">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-text">PIXEL</span>
+                <span class="logo-subtext">WORD</span>
+            </div>
+            <nav>
+                <button id="btn-new" class="sidebar-btn" title="New Document">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M2 1h8l4 4v10H2V1z"/>
+                        <path d="M9 1v4h4" fill="none" stroke="#2C2C2C" stroke-width="2"/>
+                    </svg>
+                    New
+                </button>
+                <button id="btn-new-grid" class="sidebar-btn" title="New Grid Sheet">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M1 2h14v12H1V2zm1 2v3h12V4H2zm0 5v3h12V9H2z"/>
+                    </svg>
+                    Grid
+                </button>
+                <button id="btn-open-file" class="sidebar-btn" title="Open .PXP File">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <!-- Open Folder Icon -->
+                        <path d="M1 3h5l2 2h7v8H1V3zm2 3v6h10V6H3z"/>
+                    </svg>
+                    Open PXP
+                </button>
+                <button id="btn-save" class="sidebar-btn" title="Save to Browser">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <!-- Disk Icon -->
+                        <path d="M2 1h9l3 3v11H2V1zm2 2v4h6V3H4zm0 7v4h8v-4H4zM5 4h4v2H5V4zm1 8h4v1H6v-1z"/>
+                    </svg>
+                    Save
+                </button>
+                <button id="btn-save-pxp" class="sidebar-btn accent-btn" title="Save as .PXP">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <!-- Save As Icon -->
+                        <path d="M2 1h9l3 3v11H2V1zm2 2v4h6V3H4zm0 7v4h8v-4H4zM5 4h4v2H5V4zm1 8h4v1H6v-1z"/>
+                    </svg>
+                    Save PXP
+                </button>
+                <div class="separator"></div>
+                <button id="btn-import-txt" class="sidebar-btn" title="Import from .txt">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <!-- Upload Icon -->
+                        <path d="M8 14V6l2 2 1-1-4-4-4 4 1 1 2-2v8h2zm-6-2v2h12v-2H2z"/>
+                    </svg>
+                    Import .TXT
+                </button>
+                <button id="btn-export" class="sidebar-btn accent-btn" title="Export to .txt">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <!-- Download Disk Icon with arrow -->
+                        <path d="M4 11v2h8v-2h2v4H2v-4h2zm4-9v6H6l2 3 2-3H8V2z"/>
+                    </svg>
+                    Export .TXT
+                </button>
+                <button id="btn-export-pdf" class="sidebar-btn accent-btn" title="Export to .pdf">
+                    <svg class="pixel-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <!-- PDF Icon -->
+                        <path d="M2 1h8l4 4v10H2V1zm2 2v10h8V6h-4V3H4zM6 8h2v1H6V8zm0 2h3v1H6v-1z"/>
+                    </svg>
+                    Export .PDF
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Toolbar -->
+            <header class="toolbar">
+                <!-- Row 1: Core Formatting & Alignment -->
+                <div class="tool-row">
+                    <div class="tool-group">
+                        <button id="btn-undo" class="tool-btn" title="Deshacer (Ctrl+Z)" style="font-size: 15px;">↩</button>
+                        <button id="btn-redo" class="tool-btn" title="Rehacer (Ctrl+Y)" style="font-size: 15px;">↪</button>
+                    </div>
+                    <div class="tool-group">
+                        <button id="btn-bold" class="tool-btn" title="Bold">
+                            <span style="font-weight: bold; font-family: 'Press Start 2P', monospace;">B</span>
+                        </button>
+                        <button id="btn-italic" class="tool-btn" title="Italic">
+                            <span style="font-style: italic; font-family: 'VT323', monospace; font-size: 1.2rem;">I</span>
+                        </button>
+                        <button id="btn-highlight" class="tool-btn" title="Resaltar Texto">
+                            <span style="background-color: yellow; color: black; font-family: 'VT323', monospace; padding: 0 2px;">A</span>
+                        </button>
+                    </div>
+
+                    <div class="tool-group color-palette">
+                        <!-- Row 1 -->
+                        <button class="swatch" style="background-color: #F0F0F0;" data-color="#F0F0F0" title="White"></button>
+                        <button class="swatch" style="background-color: #FF6B6B;" data-color="#FF6B6B" title="Red"></button>
+                        <button class="swatch" style="background-color: #4ECDC4;" data-color="#4ECDC4" title="Cyan"></button>
+                        <button class="swatch" style="background-color: #FFE66D;" data-color="#FFE66D" title="Yellow"></button>
+                        <button class="swatch" style="background-color: #6BCB77;" data-color="#6BCB77" title="Green"></button>
+                        <button class="swatch" style="background-color: #4D96FF;" data-color="#4D96FF" title="Blue"></button>
+                        <button class="swatch" style="background-color: #B1B2FF;" data-color="#B1B2FF" title="Purple"></button>
+                        <!-- Row 2 -->
+                        <button class="swatch" style="background-color: #1A1A2E;" data-color="#1A1A2E" title="Dark Navy"></button>
+                        <button class="swatch" style="background-color: #FF9F43;" data-color="#FF9F43" title="Orange"></button>
+                        <button class="swatch" style="background-color: #F368E0;" data-color="#F368E0" title="Magenta"></button>
+                        <button class="swatch" style="background-color: #01CBC6;" data-color="#01CBC6" title="Teal"></button>
+                        <button class="swatch" style="background-color: #5F27CD;" data-color="#5F27CD" title="Indigo"></button>
+                        <button class="swatch" style="background-color: #00E640;" data-color="#00E640" title="Lime"></button>
+                        <button class="swatch" style="background-color: #C0392B;" data-color="#C0392B" title="Dark Red"></button>
+
+                        <div class="color-picker-wrapper custom-color-trigger" data-target="text-color" title="Custom Color">
+                            <input type="hidden" id="text-color" class="color-input" value="#F0F0F0">
+                            <div class="color-indicator" id="text-color-indicator"></div>
+                        </div>
+                    </div>
+
+                    <div class="tool-group" style="border-left: 1px solid var(--border-color); padding-left: 8px; gap: 4px;">
+                        <select id="palette-select" class="pixel-input" style="width: 110px; font-size: 9px; padding: 2px 4px; text-align: center; font-family: 'Press Start 2P';">
+                            <option value="">— PALETAS —</option>
+                        </select>
+                        <button id="btn-save-palette" class="tool-btn" title="Guardar paleta actual">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M2 2v12h12V5l-3-3H2zm1 1h5v3H3V3zm6 0v3H8V3h1zM3 9h10v4H3V9z"/>
+                            </svg>
+                        </button>
+                        <button id="btn-delete-palette" class="tool-btn" title="Eliminar paleta seleccionada" style="color: var(--accent-color);">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M4 3V1h8v2h4v2h-1v10H1V5H0V3h4zm2 0h4V2H6v1zM3 5v8h10V5H3zm3 2v5H5V7h1zm2 0v5H7V7h1zm2 0v5H9V7h1z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="tool-group">
+                        <button id="btn-align-left" class="tool-btn" title="Align Left">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M2 3h12v2H2zm0 4h8v2H2zm0 4h12v2H2z"/>
+                            </svg>
+                        </button>
+                        <button id="btn-align-center" class="tool-btn" title="Align Center">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M2 3h12v2H2zm2 4h8v2H4zm-2 4h12v2H2z"/>
+                            </svg>
+                        </button>
+                        <button id="btn-align-right" class="tool-btn" title="Align Right">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M2 3h12v2H2zm4 4h8v2H6zm-4 4h12v2H2z"/>
+                            </svg>
+                        </button>
+                        <button id="btn-align-justify" class="tool-btn" title="Justify">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M2 3h12v2H2zm0 4h12v2H2zm0 4h12v2H2z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Row 2: Fonts, Effects, Page Controls -->
+                <div class="tool-row">
+                    <div class="tool-group font-selector">
+                        <select id="font-family" class="pixel-select" title="Select Font">
+                            <option value="'Press Start 2P', monospace" style="font-family: 'Press Start 2P', monospace;">Press Start 2P</option>
+                            <option value="'VT323', monospace" style="font-family: 'VT323', monospace;">VT323</option>
+                        </select>
+                        <select id="font-size" class="pixel-select" title="Font Size" style="width: 50px; margin-left: 4px;">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                        </select>
+                    </div>
+
+                    <div class="tool-group chroma-tools">
+                        <div class="color-picker-wrapper custom-color-trigger" data-target="anim-color-1" title="Chroma Color 1">
+                            <input type="hidden" id="anim-color-1" class="color-input" value="#FF6B6B">
+                            <div class="color-indicator" id="anim-color-1-indicator"></div>
+                        </div>
+                        <div class="color-picker-wrapper custom-color-trigger" data-target="anim-color-2" title="Chroma Color 2">
+                            <input type="hidden" id="anim-color-2" class="color-input" value="#4ECDC4">
+                            <div class="color-indicator" id="anim-color-2-indicator"></div>
+                        </div>
+                        <select id="anim-speed" class="pixel-select" title="Velocidad" style="width: 70px; margin: 0 4px;">
+                            <option value="2">Lento</option>
+                            <option value="1" selected>Medio</option>
+                            <option value="0.2">Rápido</option>
+                        </select>
+                        <button id="btn-apply-anim" class="tool-btn action-btn text-btn" title="Aplicar Animación al Texto" style="font-size: 16px;">✨</button>
+                    </div>
+
+                    <div class="tool-group">
+                        <button id="btn-glow-toggle" class="tool-btn action-btn text-btn" title="Aplicar Brillo a Selección" style="font-size: 16px;">🌟</button>
+                        <div class="color-picker-wrapper custom-color-trigger" data-target="glow-color-input" title="Color del Brillo" style="margin-left: 2px;">
+                            <input type="hidden" id="glow-color-input" class="color-input" value="#FFFFFF">
+                            <div class="color-indicator" id="glow-color-indicator"></div>
+                        </div>
+                        <button id="btn-read-mode" class="tool-btn action-btn" title="Vista de Lectura">
+                            📖
+                        </button>
+                        <button id="btn-image" class="tool-btn action-btn" title="Insertar Imagen">
+                            🖼️
+                        </button>
+                        <button id="btn-table" class="tool-btn action-btn" title="Insert Table">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M2 2h12v12H2V2zm2 2v3h3V4H4zm5 0v3h3V4H9zM4 9v3h3V9H4zm5 0v3h3V9H9z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                        <!-- Margin Controls -->
+                        <div id="margin-controls" style="display: flex; align-items: center; margin-left: 8px; gap: 4px; border-left: 1px solid var(--border-color); padding-left: 8px;">
+                            <span style="font-family: 'Press Start 2P'; font-size: 8px; color: var(--text-color-dim);">MGN</span>
+                            <input type="number" id="page-margin-y" class="pixel-input" title="Margen Superior/Inferior (px)" value="60" min="20" max="200" style="width: 45px; height: 24px; padding: 0; text-align: center; font-size: 10px;">
+                            <span style="font-family: var(--font-secondary); font-size: 12px;">Y</span>
+                            <input type="number" id="page-margin-x" class="pixel-input" title="Margen Lateral (px)" value="60" min="20" max="200" style="width: 45px; height: 24px; padding: 0; text-align: center; font-size: 10px;">
+                            <span style="font-family: var(--font-secondary); font-size: 12px;">X</span>
+                        </div>
+
+                        <!-- Add / Delete Page -->
+                        <div style="display: flex; align-items: center; gap: 4px; border-left: 1px solid var(--border-color); padding-left: 8px; margin-left: 8px;">
+                            <button id="btn-add-page" class="tool-btn action-btn" title="Añadir Página">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" fill="none"/>
+                                </svg>
+                            </button>
+                            <button id="btn-delete-page" class="tool-btn action-btn" title="Borrar Página" style="color: var(--accent-color);">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                </svg>
+                            </button>
+                            <span style="font-family: 'Press Start 2P'; font-size: 7px; color: var(--text-color-dim);">PAGE</span>
+                        </div>
+
+                    <div class="tool-group" id="table-tools" style="display: none;">
+                        <button id="btn-add-row" class="tool-btn" title="Añadir Fila Abajo"><span style="font-family: var(--font-secondary); font-size: 16px;">+R</span></button>
+                        <button id="btn-add-col" class="tool-btn" title="Añadir Columna Derecha"><span style="font-family: var(--font-secondary); font-size: 16px;">+C</span></button>
+                        <button id="btn-del-row" class="tool-btn" title="Eliminar Fila" style="color: var(--accent-color);"><span style="font-family: var(--font-secondary); font-size: 16px;">-R</span></button>
+                        <button id="btn-del-col" class="tool-btn" title="Eliminar Columna" style="color: var(--accent-color);"><span style="font-family: var(--font-secondary); font-size: 16px;">-C</span></button>
+                        <button id="btn-del-table" class="tool-btn" title="Eliminar Tabla" style="color: var(--accent-color);">🗑️</button>
+                        <button id="btn-config-table" class="tool-btn" title="Estilos de Tabla">⚙️</button>
+                    </div>
+                    <div class="tool-group" id="grid-toolbar-group" style="display: none; border-left: 1px solid var(--border-color); padding-left: 8px;">
+                        <select id="grid-font-family" class="pixel-select" title="Grid Font" style="width: 120px;">
+                            <option value="'VT323', monospace" style="font-family: 'VT323', monospace;">VT323</option>
+                            <option value="'Press Start 2P', monospace" style="font-family: 'Press Start 2P', monospace;">Press Start 2P</option>
+                        </select>
+                        <span style="width: 1px; height: 20px; background: var(--border-color); margin: 0 4px; display: inline-block;"></span>
+                        <button id="btn-grid-add-row" class="tool-btn" title="Add Row"><span style="font-family: var(--font-secondary); font-size: 16px;">+R</span></button>
+                        <button id="btn-grid-add-col" class="tool-btn" title="Add Column"><span style="font-family: var(--font-secondary); font-size: 16px;">+C</span></button>
+                        <button id="btn-grid-del-row" class="tool-btn" title="Delete Row" style="color: var(--accent-color);"><span style="font-family: var(--font-secondary); font-size: 16px;">-R</span></button>
+                        <button id="btn-grid-del-col" class="tool-btn" title="Delete Column" style="color: var(--accent-color);"><span style="font-family: var(--font-secondary); font-size: 16px;">-C</span></button>
+                        <span style="width: 1px; height: 20px; background: var(--border-color); margin: 0 4px; display: inline-block;"></span>
+                        <button id="btn-grid-import-csv" class="tool-btn" title="Import CSV">📥</button>
+                        <button id="btn-grid-export-csv" class="tool-btn" title="Export CSV">📤</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Tabs Bar -->
+            <div id="tabs-bar" class="tabs-bar"></div>
+
+            <input type="file" id="pxp-upload" accept=".pxp" style="display: none;">
+            <input type="file" id="txt-upload" accept=".txt" style="display: none;">
+            <input type="file" id="csv-upload" accept=".csv,.tsv" style="display: none;">
+
+            <!-- Editor -->
+            <div class="editor-container" id="editor-container" style="position: relative;">
+                <div id="table-drag-handle" class="table-drag-handle" title="Arrastrar (Manten Ctrl para ajustar a cuadrícula)">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0L4 4h3v3H4V4L0 8l4 4V9h3v3H4l4 4 4-4h-3V9h3v3l4-4-4-4v3H9V4h3L8 0z"/></svg>
+                </div>
+                <div id="editor" contenteditable="true" spellcheck="true" lang="es" class="pixel-editor">
+                    <p>Start typing...</p>
+                </div>
+            </div>
+
+            <!-- Grid Area -->
+            <div class="grid-container" id="grid-area" style="display: none;">
+                <div class="grid-table-wrap" id="grid-table-wrap">
+                    <table class="grid-table" id="grid-table">
+                        <thead><tr id="grid-header-row"></tr></thead>
+                        <tbody id="grid-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Exit Reading Mode Button -->
+    <button id="btn-exit-read-mode" class="exit-reading-mode">Salir de Vista de Lectura</button>
+
+    <!-- Modal for Table Insertion -->
+    <div id="table-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Insert Table</h3>
+            <div class="modal-inputs">
+                <label>Rows: <input type="number" id="table-rows" value="3" min="1" max="20"></label>
+                <label>Cols: <input type="number" id="table-cols" value="3" min="1" max="10"></label>
+            </div>
+            <div class="modal-actions">
+                <button id="btn-cancel-table" class="pixel-btn">Cancel</button>
+                <button id="btn-confirm-table" class="pixel-btn accent-btn">Insert</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Table Styles -->
+    <div id="table-style-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Estilos de Tabla</h3>
+            <div class="modal-inputs">
+                <label>Grosor Borde (px): <input type="number" id="style-border-width" value="2" min="0" max="20" style="width: 80px;"></label>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                    <span>Color Borde:</span>
+                    <div class="color-picker-wrapper custom-color-trigger" data-target="style-border-color" title="Color de Líneas">
+                        <input type="hidden" id="style-border-color" value="#444444">
+                        <div class="color-indicator" id="style-border-indicator" style="background-color: #444444;"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                    <span>Color Fondo:</span>
+                    <div class="color-picker-wrapper custom-color-trigger" data-target="style-bg-color" title="Color de Fondo">
+                        <input type="hidden" id="style-bg-color" value="transparent">
+                        <div class="color-indicator" id="style-bg-indicator" style="background-color: transparent;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="btn-cancel-style" class="pixel-btn">Cancelar</button>
+                <button id="btn-confirm-style" class="pixel-btn accent-btn">Aplicar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Universal Custom Color Picker Modal -->
+    <div id="color-picker-modal" class="modal hidden" style="z-index: 200;">
+        <div class="modal-content" style="width: 320px;">
+            <h3 id="color-picker-title" style="margin-bottom: 15px; color: var(--accent-color);">Elegir Color</h3>
+            <div class="modal-inputs" style="margin-bottom: 10px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="color" id="native-color-picker" style="width: 40px; height: 40px; padding: 0; border: none; cursor: pointer; flex-shrink: 0;">
+                    <input type="text" id="custom-hex-input" class="pixel-input" placeholder="#FF00FF" style="width: 100%; text-align: center; font-size: 20px; text-transform: uppercase;">
+                </div>
+                <div class="retro-palette-grid"></div>
+            </div>
+            <div class="modal-actions" style="margin-top: 15px;">
+                <button id="btn-cancel-color" class="pixel-btn">Cancelar</button>
+                <button id="btn-confirm-color" class="pixel-btn accent-btn">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Insertion Modal -->
+    <div id="image-modal" class="modal hidden" style="z-index: 200;">
+        <div class="modal-content" style="width: 420px;">
+            <h3 style="margin-bottom: 14px; color: var(--accent-color);">🖼️ Insertar Imagen</h3>
+
+            <!-- Tabs -->
+            <div style="display: flex; gap: 4px; margin-bottom: 14px;">
+                <button id="img-tab-file" class="pixel-btn accent-btn" style="flex: 1; font-size: 10px;">📁 Archivo</button>
+                <button id="img-tab-url"  class="pixel-btn"           style="flex: 1; font-size: 10px;">🔗 URL</button>
+            </div>
+
+            <!-- File panel -->
+            <div id="img-panel-file">
+                <div id="img-drop-zone" style="border: 2px dashed var(--border-color); border-radius: 4px; padding: 24px; text-align: center; cursor: pointer; margin-bottom: 10px; transition: border-color 0.2s;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">⬆️</div>
+                    <div style="font-family: var(--font-secondary); font-size: 16px; color: var(--text-color-dim);">Arrastra una imagen aquí<br>o haz clic para buscar</div>
+                </div>
+                <input type="file" id="image-upload" accept="image/*" style="display: none;">
+            </div>
+
+            <!-- URL panel (hidden by default) -->
+            <div id="img-panel-url" style="display: none;">
+                <input type="text" id="img-url-input" class="pixel-input" placeholder="https://ejemplo.com/imagen.png" style="width: 100%; margin-bottom: 10px;">
+                <button id="img-url-load" class="pixel-btn" style="width: 100%; font-size: 11px;">Cargar vista previa</button>
+            </div>
+
+            <!-- Preview -->
+            <div id="img-preview-wrap" style="display: none; margin-top: 10px; border: 1px solid var(--border-color); border-radius: 4px; padding: 6px; text-align: center; max-height: 200px; overflow: hidden;">
+                <img id="img-preview" src="" alt="preview" style="max-width: 100%; max-height: 180px; object-fit: contain; image-rendering: pixelated;">
+            </div>
+
+            <!-- Size controls -->
+            <div id="img-size-controls" style="display: none; margin-top: 10px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-family: var(--font-secondary); font-size: 14px; color: var(--text-color-dim);">Ancho</label>
+                    <input type="number" id="img-width" class="pixel-input" value="100" min="1" max="100" style="width: 70px; text-align: center;">
+                    <label style="font-family: var(--font-secondary); font-size: 14px; color: var(--text-color-dim);">%</label>
+                    <label style="font-family: var(--font-secondary); font-size: 14px; color: var(--text-color-dim); margin-left: 10px;">Alineación</label>
+                    <select id="img-align" class="pixel-select" style="flex: 1;">
+                        <option value="block">↕ Bloque</option>
+                        <option value="inline">→ Inline</option>
+                        <option value="center">↔ Centrado</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 14px;">
+                <button id="btn-cancel-image" class="pixel-btn">Cancelar</button>
+                <button id="btn-confirm-image" class="pixel-btn accent-btn" disabled>Insertar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
