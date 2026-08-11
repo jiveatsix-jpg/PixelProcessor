@@ -2,7 +2,7 @@
 // Handles: file upload, URL input, live preview, and image manipulation.
 // Features: Drag to move, corner handle to resize, delete on hover/select.
 
-import { $ } from '../utils/dom.js';
+import { $, makeFloating, reparentToOverlappingPage } from '../utils/dom.js';
 import { syncActiveTabContent } from '../state.js';
 
 let _editor = null;
@@ -221,37 +221,13 @@ function _setupInteractionListeners() {
 
     document.addEventListener('mouseup', () => {
         if (_isDragging && _activeImg) {
-            // Smart re-parenting for Paged Mode
-            const imgRect = _activeImg.getBoundingClientRect();
-            const pages = Array.from(document.querySelectorAll('.page-content'));
-            
-            if (pages.length > 0) {
-                let targetPage = pages[0];
-                let maxOverlap = 0;
-                
-                // Find which page the image overlaps with the most
-                for (const page of pages) {
-                    const pRect = page.getBoundingClientRect();
-                    const overlapStart = Math.max(imgRect.top, pRect.top);
-                    const overlapEnd = Math.min(imgRect.bottom, pRect.bottom);
-                    const overlap = Math.max(0, overlapEnd - overlapStart);
-                    
-                    if (overlap > maxOverlap) {
-                        maxOverlap = overlap;
-                        targetPage = page;
-                    }
-                }
-                
-                const currentWrapper = _activeImg.closest('.editor-line');
-                if (targetPage && currentWrapper && currentWrapper.parentElement !== targetPage) {
-                    // Reparent wrapper to new page
-                    targetPage.appendChild(currentWrapper);
-                    // Adjust top coordinate relative to new page
-                    const tpRect = targetPage.getBoundingClientRect();
-                    const newTop = imgRect.top - tpRect.top;
-                    _activeImg.style.top = newTop + 'px';
-                }
-            }
+            // Smart re-parenting for Paged Mode: move the image's line wrapper
+            // into whichever page it now overlaps most, keeping it visually anchored.
+            reparentToOverlappingPage(_activeImg, {
+                reparentTarget: _activeImg.closest('.editor-line'),
+                setLeft: false,
+                fallbackToFirstPage: true,
+            });
         }
 
         if (_isDragging || _isResizing) {
@@ -267,6 +243,17 @@ function _setupInteractionListeners() {
     // Handle window resize/scroll
     container.addEventListener('scroll', _syncOverlay);
     window.addEventListener('resize', _syncOverlay);
+
+    // Safety net: if the mouse button is released outside the window (e.g.
+    // the user alt-tabs away mid-drag), the doc 'mouseup' never fires and the
+    // image would stay stuck to the cursor. Reset on window blur too.
+    window.addEventListener('blur', () => {
+        if (_isDragging || _isResizing) {
+            _isDragging = false;
+            _isResizing = false;
+            _syncOverlay();
+        }
+    });
 }
 
 function _startDrag(e) {
@@ -276,26 +263,13 @@ function _startDrag(e) {
     
     // Ensure it's floating
     if (_activeImg.style.position !== 'absolute') {
-        _makeFloating(_activeImg);
+        makeFloating(_activeImg);
     }
     
     _imgStart = {
         x: parseFloat(_activeImg.style.left) || 0,
         y: parseFloat(_activeImg.style.top) || 0
     };
-}
-
-function _makeFloating(img) {
-    const iRect = img.getBoundingClientRect();
-    const parent = img.closest('.page-content') || document.getElementById('editor-container');
-    const pRect = parent.getBoundingClientRect();
-    
-    img.style.position = 'absolute';
-    img.style.zIndex = '50';
-    img.style.margin = '0';
-    // Position relative to parent page
-    img.style.left = (iRect.left - pRect.left + parent.scrollLeft) + 'px';
-    img.style.top = (iRect.top - pRect.top + parent.scrollTop) + 'px';
 }
 
 function _startResize(e) {
@@ -316,7 +290,7 @@ function _centerActiveImage() {
 
     // Ensure it's floating
     if (_activeImg.style.position !== 'absolute') {
-        _makeFloating(_activeImg);
+        makeFloating(_activeImg);
     }
 
     const parent = _activeImg.closest('.page-content');
@@ -477,7 +451,7 @@ function _insertImage(src, widthPct, align) {
         range.insertNode(lineWrapper);
         
         // Immediately make it floating so it doesn't push text down
-        _makeFloating(img);
+        makeFloating(img);
         
         // Create an empty line after the image for easier typing
         const nextLine = document.createElement('div');

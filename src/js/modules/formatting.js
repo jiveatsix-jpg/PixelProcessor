@@ -2,7 +2,7 @@
 // Bold, Italic, Highlight, Alignment, Font Family, Font Size, Text Color + Palette
 
 import { $, $q } from '../utils/dom.js';
-import { formatCommand } from '../utils/formatting.js';
+import { formatCommand } from './richTextEngine.js';
 import { openColorPicker } from './colorPicker.js';
 import { state, savePaletteToStorage, loadSavedPalettes, savePalette, deleteSavedPalette } from '../state.js';
 import { DEFAULT_PALETTE } from '../config.js';

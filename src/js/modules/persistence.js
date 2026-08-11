@@ -6,6 +6,11 @@ import { state, syncActiveTabContent, saveDocumentsToStorage } from '/js/state.j
 import { injectDocument } from '/js/modules/tabs.js';
 import { getRawText } from '/js/modules/pageMode.js';
 
+/** Strip characters that are invalid in file names on Windows/macOS/Linux. */
+function _sanitizeFilename(name) {
+    return (name || 'Documento').replace(/[\\/:*?"<>|]/g, '_').trim() || 'Documento';
+}
+
 export function initPersistence(editor) {
     console.log('Persistence: Initializing event listeners...');
 
@@ -18,14 +23,14 @@ export function initPersistence(editor) {
             const doc = state.documents.find(d => d.id === state.activeTabId);
             if (!doc) return;
 
-            const content = getRawText ? getRawText() : doc.content;
+            const content = getRawText();
             const json = JSON.stringify({ title: doc.title, content: content });
 
             if (window.__TAURI__ && window.__TAURI__.dialog) {
                 _saveTauriPXP(doc.title, json);
             } else {
                 console.log('Persistence: Browser download fallback for PXP');
-                downloadText(doc.title + '.pxp', json, 'application/json');
+                downloadText(_sanitizeFilename(doc.title) + '.pxp', json, 'application/json');
             }
         };
     }
@@ -81,7 +86,7 @@ export function initPersistence(editor) {
     if (btnExport) {
         btnExport.onclick = () => {
             console.log('Persistence: Export TXT clicked');
-            const text = getRawText ? getRawText() : '';
+            const text = getRawText();
             if (window.__TAURI__ && window.__TAURI__.dialog) {
                 _saveTauriTXT(text);
             } else {
@@ -97,14 +102,13 @@ async function _saveTauriPXP(title, json) {
         const { writeTextFile } = window.__TAURI__.fs;
         const path = await save({
             filters: [{ name: 'Pixel Processor Document', extensions: ['pxp'] }],
-            defaultPath: title + '.pxp',
+            defaultPath: _sanitizeFilename(title) + '.pxp',
         });
         if (path) await writeTextFile(path, json);
     } catch (e) {
         console.error('Tauri PXP save error', e);
         alert('Error guardando PXP en Tauri. Reintentando descarga de navegador.');
-        const data = JSON.parse(json);
-        downloadText(data.title + '.pxp', json, 'application/json');
+        downloadText(_sanitizeFilename(title) + '.pxp', json, 'application/json');
     }
 }
 

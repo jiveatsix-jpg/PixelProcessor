@@ -1,9 +1,12 @@
 // ── Tab / Document Manager ────────────────────────────────────────────────────
 
-import { state, syncActiveTabContent, saveDocumentsToStorage } from '/js/state.js';
+import { state, syncActiveTabContent, saveDocumentsToStorage, genId } from '/js/state.js';
 import { $, on } from '/js/utils/dom.js';
 import { renderPages } from '/js/modules/pageMode.js';
 import { renderGrid } from '/js/modules/grid/index.js';
+import { debounce } from '/js/utils/debounce.js';
+
+const _autosave = debounce(() => saveDocumentsToStorage(), 800);
 
 let _editor   = null;
 let _tabsBar  = null;
@@ -33,11 +36,26 @@ export function initTabs(editor) {
         const newTitle = prompt('Nuevo nombre del documento:', doc.title);
         if (newTitle && newTitle.trim()) {
             doc.title = newTitle.trim();
+            saveDocumentsToStorage();
             renderTabs();
         }
     });
 
-    on(editor, 'input', () => syncActiveTabContent(_editor));
+    // Listen on editor-container, not editor: in paged mode the actual
+    // .page-content elements are siblings of #editor (both live inside
+    // #editor-container), so an 'input' listener on #editor alone would
+    // never see paged-mode edits bubble through.
+    on($('editor-container'), 'input', () => {
+        syncActiveTabContent(_editor);
+        _autosave();
+    });
+
+    // Guarantee a final flush on close/reload — the debounced autosave above
+    // can otherwise lose the last few hundred ms of edits.
+    window.addEventListener('beforeunload', () => {
+        syncActiveTabContent(_editor);
+        saveDocumentsToStorage();
+    });
 
     loadActiveTab();
 }
@@ -99,7 +117,7 @@ export function loadActiveTab() {
 
 export function newDocument() {
     syncActiveTabContent(_editor);
-    const newId = Date.now().toString();
+    const newId = genId();
     state.documents.push({
         id     : newId,
         title  : `Document ${state.documents.length + 1}`,
@@ -107,12 +125,13 @@ export function newDocument() {
         content: '<p></p>',
     });
     state.activeTabId = newId;
+    saveDocumentsToStorage();
     loadActiveTab();
 }
 
 export function newGridDocument() {
     syncActiveTabContent(_editor);
-    const newId = Date.now().toString();
+    const newId = genId();
     state.documents.push({
         id    : newId,
         title : `Sheet ${state.documents.filter(d => d.type === 'grid').length + 1}`,
@@ -129,14 +148,16 @@ export function newGridDocument() {
         },
     });
     state.activeTabId = newId;
+    saveDocumentsToStorage();
     loadActiveTab();
 }
 
 export function injectDocument(title, content) {
     syncActiveTabContent(_editor);
-    const newId = Date.now().toString();
+    const newId = genId();
     state.documents.push({ id: newId, title, type: 'word', content });
     state.activeTabId = newId;
+    saveDocumentsToStorage();
     loadActiveTab();
 }
 
@@ -148,8 +169,9 @@ function _switchTab(docId) {
 
 function _closeTab(docId) {
     if (state.documents.length === 1) {
-        state.documents = [{ id: Date.now().toString(), title: 'Document 1', type: 'word', content: '<p></p>' }];
+        state.documents = [{ id: genId(), title: 'Document 1', type: 'word', content: '<p></p>' }];
         state.activeTabId = state.documents[0].id;
+        saveDocumentsToStorage();
         loadActiveTab();
         return;
     }
@@ -160,6 +182,7 @@ function _closeTab(docId) {
     } else {
         renderTabs();
     }
+    saveDocumentsToStorage();
 }
 
 export function initDocumentButtons(editor) {

@@ -101,6 +101,7 @@ function startHeaderEdit(th) {
     input.select();
 
     const finish = () => {
+        input.removeEventListener('blur', finish);
         const val = input.value.trim() || orig;
         th.textContent = val;
         g.headers[col] = val;
@@ -110,7 +111,10 @@ function startHeaderEdit(th) {
     input.addEventListener('blur', finish);
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { input.blur(); }
-        if (e.key === 'Escape') { th.textContent = orig; }
+        if (e.key === 'Escape') {
+            input.removeEventListener('blur', finish);
+            th.textContent = orig;
+        }
         e.stopPropagation();
     });
 }
@@ -131,22 +135,30 @@ function bindGridEvents() {
         });
     });
 
-    _area.addEventListener('keydown', (e) => {
-        const editing = _area.querySelector('.grid-cell.editing');
-        if (editing) {
-            handleEditingKey(e, editing);
-            return;
-        }
-        if (['Tab', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-            e.preventDefault();
-            navGrid(e.key);
-        }
-        if (e.key === 'F2') {
-            e.preventDefault();
-            const active = _area.querySelector('.grid-cell.active');
-            if (active) startCellEdit(active);
-        }
-    });
+    // _area is the same DOM node across renders (only its innerHTML is
+    // replaced), so the keydown listener must be bound once, not on every
+    // renderGrid() call, or it accumulates and each keypress fires N times.
+    if (!_area.dataset.keydownBound) {
+        _area.addEventListener('keydown', _onGridKeyDown);
+        _area.dataset.keydownBound = 'true';
+    }
+}
+
+function _onGridKeyDown(e) {
+    const editing = _area.querySelector('.grid-cell.editing');
+    if (editing) {
+        handleEditingKey(e, editing);
+        return;
+    }
+    if (['Tab', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        navGrid(e.key);
+    }
+    if (e.key === 'F2') {
+        e.preventDefault();
+        const active = _area.querySelector('.grid-cell.active');
+        if (active) startCellEdit(active);
+    }
 }
 
 function handleEditingKey(e, td) {
@@ -220,10 +232,15 @@ function navToCell(row, col) {
 
 function ensureRowExists(rowIdx, colIdx) {
     const g = _activeDoc.grid;
+    let added = false;
     while (g.rows.length <= rowIdx) {
         addRow(g);
+        added = true;
     }
-    renderGrid(_activeDoc);
+    // Only rebuild the DOM when a row was actually added — re-rendering on
+    // every navigation keypress is wasteful and was the root cause of the
+    // keydown listener leak (see bindGridEvents).
+    if (added) renderGrid(_activeDoc);
 }
 
 function commitEditingCell() {
@@ -264,9 +281,17 @@ function startCellEdit(td) {
         td.appendChild(sel);
         sel.focus();
 
-        sel.addEventListener('change', () => commitCellEdit(td));
-        sel.addEventListener('blur', () => commitCellEdit(td));
-        sel.addEventListener('keydown', (e) => e.stopPropagation());
+        const commitSel = () => commitCellEdit(td);
+        sel.addEventListener('change', commitSel);
+        sel.addEventListener('blur', commitSel);
+        sel.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                sel.removeEventListener('blur', commitSel);
+                cancelCellEdit(td);
+                td.focus();
+            }
+            e.stopPropagation();
+        });
     } else {
         const input = document.createElement('input');
         input.type = 'text';
@@ -277,9 +302,11 @@ function startCellEdit(td) {
         input.focus();
         input.select();
 
-        input.addEventListener('blur', () => commitCellEdit(td));
+        const commitInput = () => commitCellEdit(td);
+        input.addEventListener('blur', commitInput);
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                input.removeEventListener('blur', commitInput);
                 cancelCellEdit(td);
                 td.focus();
             }
@@ -360,19 +387,20 @@ function bindToolbar() {
         }
     });
 
-    // Font selector
+    // Font selector — this element persists across renders, so bind once.
     const fontSel = document.getElementById('grid-font-family');
-    if (fontSel) {
-        const handler = () => {
-            if (!_activeDoc) return;
-            _activeDoc.grid.fontFamily = fontSel.value;
-            const table = document.querySelector('.grid-table');
-            if (table) table.style.fontFamily = fontSel.value;
-            saveDocumentsToStorage();
-        };
-        fontSel.removeEventListener('change', handler);
-        fontSel.addEventListener('change', handler);
+    if (fontSel && !fontSel.dataset.changeBound) {
+        fontSel.addEventListener('change', _onFontChange);
+        fontSel.dataset.changeBound = 'true';
     }
+}
+
+function _onFontChange(e) {
+    if (!_activeDoc) return;
+    _activeDoc.grid.fontFamily = e.target.value;
+    const table = document.querySelector('.grid-table');
+    if (table) table.style.fontFamily = e.target.value;
+    saveDocumentsToStorage();
 }
 
 // ── CSV Upload Handler ─────────────────────────────────────────
@@ -382,10 +410,11 @@ document.getElementById('csv-upload')?.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
+    reader.onerror = () => alert('No se pudo leer el archivo CSV.');
     reader.onload = () => {
         const text = reader.result;
         const parsed = parseCSV(text);
-        if (!parsed.length) return;
+        if (!parsed.length) { alert('El archivo CSV está vacío o no se pudo interpretar.'); return; }
         const csvHeaders = parsed[0];
         const csvRows = parsed.slice(1);
         const g = _activeDoc.grid;

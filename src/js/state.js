@@ -56,18 +56,21 @@ export function loadStateFromStorage() {
     // Documents
     try {
         const raw = localStorage.getItem(LS_KEYS.DOCUMENTS);
-        if (raw) _state.documents = JSON.parse(raw);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            _state.documents = Array.isArray(parsed) ? parsed : [];
+        }
     } catch { _state.documents = []; }
 
     // Legacy migration
     const legacy = localStorage.getItem(LS_KEYS.OLD_CONTENT);
     if (legacy && _state.documents.length === 0) {
-        _state.documents = [{ id: Date.now().toString(), title: 'Document 1', content: legacy }];
+        _state.documents = [{ id: genId(), title: 'Document 1', content: legacy }];
         localStorage.removeItem(LS_KEYS.OLD_CONTENT);
     }
 
     if (_state.documents.length === 0) {
-        _state.documents = [{ id: Date.now().toString(), title: 'Document 1', type: 'word', content: '<p></p>' }];
+        _state.documents = [{ id: genId(), title: 'Document 1', type: 'word', content: '<p></p>' }];
     }
 
     // Ensure legacy docs get a type
@@ -91,11 +94,20 @@ export function loadStateFromStorage() {
 }
 
 export function saveDocumentsToStorage() {
-    localStorage.setItem(LS_KEYS.DOCUMENTS, JSON.stringify(_state.documents));
+    try {
+        localStorage.setItem(LS_KEYS.DOCUMENTS, JSON.stringify(_state.documents));
+    } catch (e) {
+        console.error('Failed to save documents:', e);
+        alert('No se pudo guardar el documento (almacenamiento lleno o no disponible). Si tienes imágenes grandes, prueba a reducirlas o eliminarlas.');
+    }
 }
 
 export function savePaletteToStorage() {
-    localStorage.setItem(LS_KEYS.PALETTE, JSON.stringify(_state.currentPalette));
+    try {
+        localStorage.setItem(LS_KEYS.PALETTE, JSON.stringify(_state.currentPalette));
+    } catch (e) {
+        console.error('Failed to save palette:', e);
+    }
 }
 
 // ── Saved Palettes (named) ──────────────────────────────────────────────────
@@ -112,14 +124,22 @@ export function loadSavedPalettes() {
 export function savePalette(name, colors) {
     const palettes = loadSavedPalettes();
     palettes[name] = [...colors];
-    localStorage.setItem(LS_KEYS.SAVED_PALETTES, JSON.stringify(palettes));
+    try {
+        localStorage.setItem(LS_KEYS.SAVED_PALETTES, JSON.stringify(palettes));
+    } catch (e) {
+        console.error('Failed to save named palette:', e);
+    }
 }
 
 /** Delete a named palette. */
 export function deleteSavedPalette(name) {
     const palettes = loadSavedPalettes();
     delete palettes[name];
-    localStorage.setItem(LS_KEYS.SAVED_PALETTES, JSON.stringify(palettes));
+    try {
+        localStorage.setItem(LS_KEYS.SAVED_PALETTES, JSON.stringify(palettes));
+    } catch (e) {
+        console.error('Failed to delete named palette:', e);
+    }
 }
 
 // ── Content sync ──────────────────────────────────────────────────────────────
@@ -142,6 +162,14 @@ export function syncActiveTabContent(editor) {
         doc.content = editor.innerHTML;
     }
     _notify('documents', _state.documents, null);
+}
+
+// ── ID generation ──────────────────────────────────────────────────────────────
+
+/** Generate a unique document id (Date.now() alone can collide within the same ms). */
+export function genId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
 // ── Backwards compatibility: export state object for modules that read directly ─

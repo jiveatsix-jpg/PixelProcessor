@@ -1,6 +1,6 @@
 // ── Formatting Commands Tests ─────────────────────────────────────────────────
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { formatCommand } from '/js/utils/formatting.js';
+import { formatCommand } from '/js/modules/richTextEngine.js';
 
 describe('Formatting Commands', () => {
     beforeEach(() => {

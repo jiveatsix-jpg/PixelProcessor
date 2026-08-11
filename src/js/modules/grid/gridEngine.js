@@ -1,5 +1,17 @@
 // ── Grid Engine — data model + CRUD ──────────────────────────────────────────
 
+/** Excel-style column letters: 0→A, 25→Z, 26→AA, 27→AB, ... */
+function _colLetters(index) {
+    let n = index + 1;
+    let letters = '';
+    while (n > 0) {
+        const rem = (n - 1) % 26;
+        letters = String.fromCharCode(65 + rem) + letters;
+        n = Math.floor((n - 1) / 26);
+    }
+    return letters;
+}
+
 /** Create a blank grid document */
 export function createBlankGrid() {
     return {
@@ -26,7 +38,7 @@ export function addRow(grid, index) {
 
 /** Add a column at the given index (default: end) */
 export function addColumn(grid, index) {
-    const name = `Col ${String.fromCharCode(65 + grid.headers.length)}`;
+    const name = `Col ${_colLetters(grid.headers.length)}`;
     if (index === undefined || index >= grid.headers.length) {
         grid.headers.push(name);
         grid.columns.push({ type: 'text' });

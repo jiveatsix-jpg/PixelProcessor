@@ -63,7 +63,9 @@ function _createPage(index = 0) {
 
     const contentEl = document.createElement('div');
     contentEl.className = 'page-content pixel-editor';
-    contentEl.contentEditable = 'true';
+    // Respect reading mode: pages created while reading mode is active
+    // (e.g. via "Add Page") must not become editable.
+    contentEl.contentEditable = document.body.classList.contains('reading-mode') ? 'false' : 'true';
     contentEl.spellcheck = true;
     contentEl.lang = 'es';
     contentEl.dataset.role = 'page-content';
@@ -364,7 +366,6 @@ function _handleKeyDown(e) {
     // Enter: block if page already has MAX_LINES
     if (e.key === 'Enter' && !e.shiftKey) {
         const lineCount = contentEl.querySelectorAll('.editor-line').length;
-        console.log(`[PAGE] Enter pressed, lineCount=${lineCount}, MAX=${MAX_LINES}, block=${lineCount >= MAX_LINES}`);
         if (lineCount >= MAX_LINES) {
             e.preventDefault();
             return;

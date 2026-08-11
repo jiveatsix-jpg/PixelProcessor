@@ -6,6 +6,8 @@
 import { $ } from '/js/utils/dom.js';
 import { state } from '/js/state.js';
 import { PDF_W_IN, PDF_H_IN, PDF_SCALE } from '/js/config.js';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export function initPdfExport(editor) {
     const btn = $('btn-export-pdf');
@@ -23,14 +25,6 @@ export function initPdfExport(editor) {
 }
 
 async function _exportPDF(editor) {
-    if (typeof window.html2canvas === 'undefined') {
-        alert('html2canvas no se ha cargado. Comprueba la conexión a internet.');
-        return;
-    }
-
-    const JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-    if (!JsPDF) { alert('jsPDF no está disponible.'); return; }
-
     const activeDoc = state.documents.find(d => d.id === state.activeTabId);
     const filename  = (activeDoc?.title || 'Documento') + '.pdf';
 
@@ -44,7 +38,7 @@ async function _exportPDF(editor) {
     const pdfW_in   = PDF_W_IN;   // 8.5
     const pdfH_in   = PDF_H_IN;   // 11
 
-    const pdf = new JsPDF({ unit: 'in', format: [pdfW_in, pdfH_in], orientation: 'portrait' });
+    const pdf = new jsPDF({ unit: 'in', format: [pdfW_in, pdfH_in], orientation: 'portrait' });
 
     for (let i = 0; i < pages.length; i++) {
         if (i > 0) pdf.addPage([pdfW_in, pdfH_in], 'portrait');
@@ -54,16 +48,20 @@ async function _exportPDF(editor) {
         const prevOverflow = page.style.overflow;
         const prevWidth    = page.style.width;
         const prevHeight   = page.style.height;
-        page.style.overflow = 'hidden';
-        page.style.width    = PAGE_W_PX + 'px';
-        page.style.height   = PAGE_H_PX + 'px';
 
-        const canvas = await _captureElement(page, PAGE_W_PX, PAGE_H_PX);
-
-        // Restore styles
-        page.style.overflow = prevOverflow;
-        page.style.width    = prevWidth;
-        page.style.height   = prevHeight;
+        let canvas;
+        try {
+            page.style.overflow = 'hidden';
+            page.style.width    = PAGE_W_PX + 'px';
+            page.style.height   = PAGE_H_PX + 'px';
+            canvas = await _captureElement(page, PAGE_W_PX, PAGE_H_PX);
+        } finally {
+            // Always restore, even if capture threw — otherwise a failed
+            // export permanently locks this page's size/overflow in the editor.
+            page.style.overflow = prevOverflow;
+            page.style.width    = prevWidth;
+            page.style.height   = prevHeight;
+        }
 
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, pdfW_in, pdfH_in);
     }
@@ -101,7 +99,7 @@ async function _captureElement(el, w, h) {
 
     let canvas;
     try {
-        canvas = await window.html2canvas(el, {
+        canvas = await html2canvas(el, {
             scale:           PDF_SCALE,
             useCORS:         true,
             backgroundColor: bg,

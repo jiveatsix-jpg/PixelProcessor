@@ -1,7 +1,7 @@
 // ── Table Module ──────────────────────────────────────────────────────────────
 // Handles: insert, drag, column resize, add/del row/col, style config modal.
 
-import { $, on } from '../utils/dom.js';
+import { $, on, makeFloating, reparentToOverlappingPage } from '../utils/dom.js';
 import { openColorPicker } from './colorPicker.js';
 import { syncActiveTabContent } from '../state.js';
 
@@ -59,6 +59,17 @@ export function initTable(editor) {
     document.addEventListener('keydown',   _onDocKeyDown);
     container.addEventListener('scroll', _updateHandlePos);
 
+    // Safety net: if the mouse button is released outside the window (e.g.
+    // the user alt-tabs away mid-drag), the doc 'mouseup' never fires and the
+    // table/column would stay stuck to the cursor. Reset on window blur too.
+    window.addEventListener('blur', () => {
+        if (isDraggingTable) isDraggingTable = false;
+        if (resizingCell) {
+            resizingCell = null;
+            container.style.cursor = '';
+        }
+    });
+
     // Selection tracking
     container.addEventListener('keyup',   checkTableContext);
     container.addEventListener('mouseup', checkTableContext);
@@ -72,8 +83,9 @@ function _insertTable() {
     const rowsInput = $('table-rows').value;
     const colsInput = $('table-cols').value;
     
-    const rows = parseInt(rowsInput, 10) || 1;
-    const cols = parseInt(colsInput, 10) || 1;
+    const MAX_DIM = 50;
+    const rows = Math.min(MAX_DIM, Math.max(1, parseInt(rowsInput, 10) || 1));
+    const cols = Math.min(MAX_DIM, Math.max(1, parseInt(colsInput, 10) || 1));
     
     let html = '<table>';
     for (let r = 0; r < rows; r++) {
@@ -182,7 +194,7 @@ function _onHandleMouseDown(e) {
     dragStartY      = e.clientY;
 
     if (activeTable.style.position !== 'absolute') {
-        _makeFloating(activeTable);
+        makeFloating(activeTable);
     }
 
     tableInitMarginX = parseFloat(activeTable.style.left) || 0;
@@ -194,19 +206,6 @@ function _onHandleMouseDown(e) {
     }
     selectedTableNode = activeTable;
     selectedTableNode.classList.add('selected-for-deletion');
-}
-
-function _makeFloating(table) {
-    const tRect = table.getBoundingClientRect();
-    const parent = table.closest('.page-content') || document.getElementById('editor-container');
-    const pRect = parent.getBoundingClientRect();
-    
-    table.style.position = 'absolute';
-    table.style.zIndex   = '50';
-    table.style.margin   = '0';
-    // Position relative to parent page content
-    table.style.left = (tRect.left - pRect.left + parent.scrollLeft) + 'px';
-    table.style.top  = (tRect.top - pRect.top + parent.scrollTop) + 'px';
 }
 
 function _onDocMouseMove(e) {
@@ -266,31 +265,7 @@ function _onDocMouseUp() {
         // Reparenting logic for paged mode
         const container = document.getElementById('editor-container');
         if (container.classList.contains('paged-mode')) {
-            const tRect = activeTable.getBoundingClientRect();
-            const pages = container.querySelectorAll('.page-content');
-            let targetPage = null;
-            let maxOverlap = 0;
-
-            for (const page of pages) {
-                const pRect = page.getBoundingClientRect();
-                const overlapStart = Math.max(tRect.top, pRect.top);
-                const overlapEnd   = Math.min(tRect.bottom, pRect.bottom);
-                const overlap      = Math.max(0, overlapEnd - overlapStart);
-                
-                if (overlap > maxOverlap) {
-                    maxOverlap = overlap;
-                    targetPage = page;
-                }
-            }
-
-            if (targetPage && activeTable.parentElement !== targetPage) {
-                targetPage.appendChild(activeTable);
-                const tpRect = targetPage.getBoundingClientRect();
-                const newTop = tRect.top - tpRect.top;
-                const newLeft = tRect.left - tpRect.left;
-                activeTable.style.top = newTop + 'px';
-                activeTable.style.left = newLeft + 'px';
-            }
+            reparentToOverlappingPage(activeTable);
         }
 
         syncActiveTabContent(_editor); 
