@@ -4,6 +4,7 @@
 import { $, on, makeFloating, reparentToOverlappingPage } from '../utils/dom.js';
 import { openColorPicker } from './colorPicker.js';
 import { syncActiveTabContent } from '../state.js';
+import { flushReflowNow } from './pageMode.js';
 
 let _editor = null;
 
@@ -117,9 +118,8 @@ function _insertTable() {
                 rawLines.splice(blockIdx + 1, 0, html);
                 
                 const newContent = rawLines.join('\n');
-                _editor.innerText = newContent;
-                pm.renderPages();
-                
+                pm.renderPages(newContent);
+
                 $('table-modal').classList.add('hidden');
             });
             return;
@@ -265,7 +265,11 @@ function _onDocMouseUp() {
         // Reparenting logic for paged mode
         const container = document.getElementById('editor-container');
         if (container.classList.contains('paged-mode')) {
-            reparentToOverlappingPage(activeTable);
+            const targetPage = reparentToOverlappingPage(activeTable);
+            if (targetPage) {
+                const pageIdx = Array.from(document.querySelectorAll('.page-content')).indexOf(targetPage);
+                if (pageIdx !== -1) flushReflowNow(pageIdx);
+            }
         }
 
         syncActiveTabContent(_editor); 
