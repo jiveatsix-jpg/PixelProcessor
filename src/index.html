@@ -6,7 +6,7 @@
     <title>Pixel Word Processor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <meta name="description" content="A minimalist pixel-art word processor with dark mode and retro aesthetics.">
 </head>
@@ -93,10 +93,10 @@
                             <span style="font-weight: bold; font-family: 'Press Start 2P', monospace;">B</span>
                         </button>
                         <button id="btn-italic" class="tool-btn" title="Italic">
-                            <span style="font-style: italic; font-family: 'VT323', monospace; font-size: 1.2rem;">I</span>
+                            <span style="font-style: italic; font-family: var(--font-secondary); font-size: 1.2rem;">I</span>
                         </button>
                         <button id="btn-highlight" class="tool-btn" title="Resaltar Texto">
-                            <span style="background-color: yellow; color: black; font-family: 'VT323', monospace; padding: 0 2px;">A</span>
+                            <span style="background-color: yellow; color: black; font-family: var(--font-secondary); padding: 0 2px;">A</span>
                         </button>
                     </div>
 
@@ -169,7 +169,6 @@
                     <div class="tool-group font-selector">
                         <select id="font-family" class="pixel-select" title="Select Font">
                             <option value="'Press Start 2P', monospace" style="font-family: 'Press Start 2P', monospace;">Press Start 2P</option>
-                            <option value="'VT323', monospace" style="font-family: 'VT323', monospace;">VT323</option>
                         </select>
                         <select id="font-size" class="pixel-select" title="Font Size" style="width: 50px; margin-left: 4px;">
                             <option value="1">1</option>
@@ -252,7 +251,6 @@
                     </div>
                     <div class="tool-group" id="grid-toolbar-group" style="display: none; border-left: 1px solid var(--border-color); padding-left: 8px;">
                         <select id="grid-font-family" class="pixel-select" title="Grid Font" style="width: 120px;">
-                            <option value="'VT323', monospace" style="font-family: 'VT323', monospace;">VT323</option>
                             <option value="'Press Start 2P', monospace" style="font-family: 'Press Start 2P', monospace;">Press Start 2P</option>
                         </select>
                         <span style="width: 1px; height: 20px; background: var(--border-color); margin: 0 4px; display: inline-block;"></span>

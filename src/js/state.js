@@ -77,7 +77,7 @@ export function loadStateFromStorage() {
     _state.documents.forEach(d => {
         if (!d.type) d.type = 'word';
         if (d.type === 'grid' && d.grid && !d.grid.fontFamily) {
-            d.grid.fontFamily = "'VT323', monospace";
+            d.grid.fontFamily = "'Press Start 2P', monospace";
         }
     });
 
