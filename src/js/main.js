@@ -10,6 +10,7 @@ import { initTable } from './modules/table.js';
 import { initImage } from './modules/image.js';
 import { initPersistence } from './modules/persistence.js';
 import { initPdfExport } from './modules/pdfExport.js';
+import { initGifExport } from './modules/gifExport.js';
 import { initZoom } from './modules/zoom.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -33,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     safeInit('Image',       () => initImage(editor));
     safeInit('Persistence', () => initPersistence(editor));
     safeInit('PdfExport',   () => initPdfExport(editor));
+    safeInit('GifExport',   () => initGifExport());
     safeInit('Zoom',        () => initZoom(document.getElementById('editor-container')));
 
     const btnNewGrid = document.getElementById('btn-new-grid');

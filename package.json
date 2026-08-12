@@ -25,6 +25,7 @@
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.7.0",
     "@tauri-apps/plugin-fs": "^2.5.0",
+    "gifenc": "^1.0.3",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1"
   }

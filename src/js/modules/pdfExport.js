@@ -5,7 +5,7 @@
 
 import { $ } from '/js/utils/dom.js';
 import { state } from '/js/state.js';
-import { PDF_W_IN, PDF_H_IN, PDF_SCALE } from '/js/config.js';
+import { PAGE_WIDTH, PAGE_HEIGHT, PDF_W_IN, PDF_H_IN, PDF_SCALE } from '/js/config.js';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -33,8 +33,8 @@ async function _exportPDF(editor) {
     if (!pages.length) { alert('No hay páginas para exportar.'); return; }
 
     // Letter size: 8.5 x 11 inches at 96 DPI = 816 x 1056 px
-    const PAGE_W_PX = 816;
-    const PAGE_H_PX = 1056;
+    const PAGE_W_PX = PAGE_WIDTH;
+    const PAGE_H_PX = PAGE_HEIGHT;
     const pdfW_in   = PDF_W_IN;   // 8.5
     const pdfH_in   = PDF_H_IN;   // 11
 
@@ -54,7 +54,7 @@ async function _exportPDF(editor) {
             page.style.overflow = 'hidden';
             page.style.width    = PAGE_W_PX + 'px';
             page.style.height   = PAGE_H_PX + 'px';
-            canvas = await _captureElement(page, PAGE_W_PX, PAGE_H_PX);
+            canvas = await captureElement(page, PAGE_W_PX, PAGE_H_PX);
         } finally {
             // Always restore, even if capture threw — otherwise a failed
             // export permanently locks this page's size/overflow in the editor.
@@ -88,7 +88,9 @@ async function _savePdf(pdf, filename) {
 }
 
 // ── Capture one DOM element as a canvas (resolving CSS vars inline first) ─────
-async function _captureElement(el, w, h) {
+// Exported for reuse by gifExport.js, which captures the same page repeatedly
+// (once per animation frame) instead of once per PDF page.
+export async function captureElement(el, w, h, scale = PDF_SCALE) {
     const cs  = getComputedStyle(el);
     const bg  = cs.backgroundColor;
     const col = cs.color;
@@ -117,7 +119,7 @@ async function _captureElement(el, w, h) {
     let canvas;
     try {
         canvas = await html2canvas(el, {
-            scale:           PDF_SCALE,
+            scale,
             useCORS:         true,
             backgroundColor: bg,
             logging:         false,
