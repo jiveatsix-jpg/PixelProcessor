@@ -66,8 +66,25 @@ async function _exportPDF(editor) {
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, pdfW_in, pdfH_in);
     }
 
-    pdf.save(filename);
+    await _savePdf(pdf, filename);
     console.log('PDF Export: Completed');
+}
+
+// ── Save the generated PDF, using a native save dialog when running in Tauri ──
+async function _savePdf(pdf, filename) {
+    if (window.__TAURI__ && window.__TAURI__.dialog) {
+        const { save } = window.__TAURI__.dialog;
+        const { writeFile } = window.__TAURI__.fs;
+        const path = await save({
+            filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
+            defaultPath: filename,
+        });
+        if (!path) return; // user cancelled the dialog
+        await writeFile(path, new Uint8Array(pdf.output('arraybuffer')));
+        alert('PDF exportado en:\n' + path);
+    } else {
+        pdf.save(filename);
+    }
 }
 
 // ── Capture one DOM element as a canvas (resolving CSS vars inline first) ─────
