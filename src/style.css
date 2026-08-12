@@ -8,7 +8,7 @@
     --border-color: #444444;
 
     --font-primary: 'Press Start 2P', monospace;
-    --font-secondary: 'VT323', monospace;
+    --font-secondary: monospace;
 }
 
 * {

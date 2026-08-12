@@ -137,7 +137,7 @@ export function newGridDocument() {
         title : `Sheet ${state.documents.filter(d => d.type === 'grid').length + 1}`,
         type  : 'grid',
         grid  : {
-            fontFamily: "'VT323', monospace",
+            fontFamily: "'Press Start 2P', monospace",
             headers: ['Columna A', 'Columna B', 'Columna C'],
             rows: [['', '', '']],
             columns: [
