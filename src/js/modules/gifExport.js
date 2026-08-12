@@ -99,7 +99,28 @@ async function _exportGIF() {
     const activeDoc = state.documents.find(d => d.id === state.activeTabId);
     const filename  = (activeDoc?.title || 'Documento') + '.gif';
 
-    const blob = new Blob([gif.bytes()], { type: 'image/gif' });
+    await _saveGif(gif.bytes(), filename);
+}
+
+// ── Save the generated GIF, using a native save dialog when running in Tauri ──
+// Mirrors pdfExport.js's _savePdf: a plain <a download> click saves silently
+// to Downloads with no dialog or confirmation of where the file went when
+// running inside the Tauri webview, unlike a real browser.
+async function _saveGif(bytes, filename) {
+    if (window.__TAURI__ && window.__TAURI__.dialog) {
+        const { save } = window.__TAURI__.dialog;
+        const { writeFile } = window.__TAURI__.fs;
+        const path = await save({
+            filters: [{ name: 'GIF Image', extensions: ['gif'] }],
+            defaultPath: filename,
+        });
+        if (!path) return; // user cancelled the dialog
+        await writeFile(path, bytes);
+        alert('GIF exportado en:\n' + path);
+        return;
+    }
+
+    const blob = new Blob([bytes], { type: 'image/gif' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
