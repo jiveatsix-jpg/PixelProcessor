@@ -41,12 +41,22 @@ function _cssPropName(key) {
  *  recognize (custom properties, text-shadow, animation, class names with
  *  no matching declared style), so this path is not used for effects that
  *  need those (see wrapSelection in utils/dom.js). */
-function _wrapRange(tag, styles = {}) {
+function _wrapRange(tag, styles = {}, clearProps = []) {
     const range = _getRange();
     if (!range) return;
 
     const container = document.createElement('div');
     container.appendChild(range.cloneContents());
+
+    // Strip any of these inline properties from descendants so they don't
+    // win over the new wrapper by CSS specificity (a nested element's own
+    // inline style always beats an ancestor's, even one set right after).
+    if (clearProps.length) {
+        [container, ...container.querySelectorAll('[style]')].forEach(el => {
+            for (const prop of clearProps) el.style[prop] = '';
+            if (el !== container && !el.getAttribute('style')) el.removeAttribute('style');
+        });
+    }
 
     const styleStr = Object.entries(styles)
         .map(([k, v]) => `${_cssPropName(k)}:${v}`)
@@ -161,6 +171,15 @@ function _selectionAncestorWithStyle(property) {
     return null;
 }
 
+/** Whether `range` lies entirely within `el` — i.e. recoloring `el` alone
+ *  would cover the whole selection, not just the part nearest the anchor.
+ *  Without this check, a selection that starts inside a colored span but
+ *  extends past it would only recolor that span and silently skip the
+ *  rest of the selected text. */
+function _rangeFullyInside(range, el) {
+    return el.contains(range.startContainer) && el.contains(range.endContainer);
+}
+
 /** Normalizes any CSS color string (name, hex, rgb()) via canvas so two
  *  different-looking values (e.g. 'yellow' vs 'rgb(255, 255, 0)') can be
  *  compared for equality. */
@@ -187,8 +206,10 @@ function _unwrapElement(el) {
  *  re-applied to already-highlighted text, or recolors it in place if a
  *  different color was picked, instead of nesting a second wrapper. */
 function _applyHighlight(color) {
+    const range = _getRange();
+    if (!range) return;
     const existing = _selectionAncestorWithStyle('backgroundColor');
-    if (existing) {
+    if (existing && _rangeFullyInside(range, existing)) {
         if (_normalizeColor(existing.style.backgroundColor) === _normalizeColor(color)) {
             _unwrapElement(existing);
         } else {
@@ -196,19 +217,103 @@ function _applyHighlight(color) {
         }
         return;
     }
-    _wrapRange('mark', { backgroundColor: color });
+    _wrapRange('mark', { backgroundColor: color }, ['backgroundColor']);
 }
 
 /** Apply foreground color to selection — recolors in place if the
  *  selection is already inside a colored span, instead of nesting a
  *  second wrapper around it. */
 function _applyForeColor(color) {
+    const range = _getRange();
+    if (!range) {
+        // No selection (just a caret) — nothing to recolor yet, so set the
+        // browser's native "typing style" instead, the same mechanism that
+        // lets you click Bold with no selection and have it apply to what
+        // you type next. Letting the browser own this (rather than
+        // pre-inserting a marker span ourselves) keeps undo/redo native.
+        document.execCommand('foreColor', false, color);
+        return;
+    }
     const existing = _selectionAncestorWithStyle('color');
-    if (existing) {
+    if (existing && _rangeFullyInside(range, existing)) {
         existing.style.color = color;
         return;
     }
-    _wrapRange('span', { color });
+    _wrapRange('span', { color }, ['color']);
+}
+
+// Fallback set if no configured character list is passed in — comma,
+// period, colon, and straight/curly quotes.
+const _DEFAULT_PUNCTUATION_CHARS = ',.:"\'“”‘’';
+
+/** Escape characters that are special inside a regex character class
+ *  ([...]) — the configured chars come from free-form user input. */
+function _escapeForCharClass(chars) {
+    return chars.replace(/[\\\]^-]/g, '\\$&');
+}
+
+/** Build a global regex matching any of the given characters. */
+function _charClassRegex(chars) {
+    return new RegExp(`[${_escapeForCharClass(chars || _DEFAULT_PUNCTUATION_CHARS)}]`, 'g');
+}
+
+/** Wrap each matching character inside a text node in its own colored
+ *  span, leaving the surrounding text untouched. Mutates a detached clone
+ *  (see _applyForeColorPunctuation), never the live document, so this never
+ *  touches the undo manager directly. */
+function _wrapMatchesInTextNode(textNode, regex, color) {
+    const text = textNode.textContent;
+    regex.lastIndex = 0;
+    if (!regex.test(text)) return;
+    regex.lastIndex = 0;
+
+    const frag = document.createDocumentFragment();
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(text))) {
+        if (match.index > lastIndex) {
+            frag.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+        }
+        const span = document.createElement('span');
+        span.style.color = color;
+        span.textContent = match[0];
+        frag.appendChild(span);
+        lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+        frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+    textNode.replaceWith(frag);
+}
+
+/** Recolor only the configured characters (default: , . : " ' “ ” ‘ ’)
+ *  within the selection, leaving the rest of the selected text's existing
+ *  color untouched. */
+function _applyForeColorPunctuation(color, chars) {
+    const range = _getRange();
+    if (!range) return;
+    const regex = _charClassRegex(chars);
+
+    const container = document.createElement('div');
+    container.appendChild(range.cloneContents());
+
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode())) textNodes.push(node);
+    textNodes.forEach(tn => _wrapMatchesInTextNode(tn, regex, color));
+
+    // cloneContents() only clones descendant content, so if the whole
+    // selection sat inside one colored ancestor, that color is dropped here —
+    // re-wrap with it so the non-punctuation text keeps its color (the
+    // punctuation spans above still win locally via specificity).
+    const existing = _selectionAncestorWithStyle('color');
+    let html = container.innerHTML;
+    if (existing && _rangeFullyInside(range, existing)) {
+        html = `<span style="color:${existing.style.color}">${html}</span>`;
+    }
+
+    document.execCommand('insertHTML', false, html);
 }
 
 /** Execute a formatting command (mimics execCommand interface). */
@@ -227,6 +332,11 @@ export function formatCommand(cmd, value = null) {
         case 'forecolor':
             _applyForeColor(value || '#F0F0F0');
             break;
+        case 'forecolorpunct': {
+            const { color, chars } = (value && typeof value === 'object') ? value : { color: value, chars: null };
+            _applyForeColorPunctuation(color || '#F0F0F0', chars);
+            break;
+        }
         case 'hilitecolor':
         case 'backcolor':
             _applyHighlight(value || 'yellow');

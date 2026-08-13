@@ -22,6 +22,10 @@ export const DEFAULT_PALETTE = [
     '#1A1A2E', '#FF9F43', '#F368E0', '#01CBC6', '#5F27CD', '#00E640', '#C0392B',
 ];
 
+// Characters the punctuation-color tool targets by default (comma, period,
+// colon, straight and curly quotes) — user-editable via its config button.
+export const DEFAULT_PUNCT_CHARS = ',.:"\'“”‘’';
+
 export const COLOR_GRID_PRESETS = [
     '#F0F0F0', '#000000', '#FF2B2B', '#FFB000', '#FFE66D',
     '#4ECDC4', '#2980B9', '#4D96FF', '#B1B2FF', '#9B59B6',
@@ -38,4 +42,5 @@ export const LS_KEYS = {
     PAGE_MODE     : 'pixelPageMode',
     MARGIN_Y      : 'pixelPageMarginY',
     MARGIN_X      : 'pixelPageMarginX',
+    PUNCT_CHARS   : 'pixelPunctChars',
 };

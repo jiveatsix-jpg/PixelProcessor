@@ -4,7 +4,7 @@
 import { $, $q } from '../utils/dom.js';
 import { formatCommand } from './richTextEngine.js';
 import { openColorPicker } from './colorPicker.js';
-import { state, savePaletteToStorage, loadSavedPalettes, savePalette, deleteSavedPalette } from '../state.js';
+import { state, savePaletteToStorage, savePunctCharsToStorage, loadSavedPalettes, savePalette, deleteSavedPalette } from '../state.js';
 import { DEFAULT_PALETTE } from '../config.js';
 
 let _editor = null;
@@ -42,6 +42,31 @@ export function initFormatting(editor) {
     $('btn-bold')          .addEventListener('click', () => execCmd('bold'));
     $('btn-italic')        .addEventListener('click', () => execCmd('italic'));
     $('btn-highlight')     .addEventListener('click', () => execCmd('hiliteColor', 'yellow'));
+    $('btn-punct-color')   .addEventListener('click', () => {
+        // Selection is about to be lost when the color-picker modal steals
+        // focus, so capture it now the same way the swatches do.
+        const sel = window.getSelection();
+        if (!sel.rangeCount || sel.getRangeAt(0).collapsed) return; // needs real selected text
+        const range = sel.getRangeAt(0).cloneRange();
+
+        openColorPicker('#F0F0F0', 'Color de Puntuación', (hex) => {
+            const sel2 = window.getSelection();
+            if (!sel2.rangeCount || sel2.getRangeAt(0).collapsed) {
+                sel2.removeAllRanges();
+                sel2.addRange(range);
+            }
+            execCmd('forecolorpunct', { color: hex, chars: state.punctChars });
+        });
+    });
+
+    $('btn-punct-config').addEventListener('click', () => {
+        const input = prompt('Caracteres que coloreará el botón ",.:" (sin espacios entre ellos):', state.punctChars);
+        if (input === null) return; // cancelled
+        const trimmed = input.trim();
+        if (!trimmed) return; // ignore empty — keep previous set
+        state.punctChars = trimmed;
+        savePunctCharsToStorage();
+    });
     $('btn-align-left')    .addEventListener('click', () => execCmd('justifyLeft'));
     $('btn-align-center')  .addEventListener('click', () => execCmd('justifyCenter'));
     $('btn-align-right')   .addEventListener('click', () => execCmd('justifyRight'));
@@ -164,10 +189,13 @@ function _applyColor(color, input, indicator) {
     input.value                       = color;
     indicator.style.backgroundColor   = color;
 
-    // Restore saved selection if current one is lost (e.g., button click cleared it)
+    // Restore saved selection only if it was lost outright (e.g. some
+    // webviews clear it despite preventDefault on the swatch's mousedown).
+    // A collapsed-but-present selection is a real caret the user placed on
+    // purpose (e.g. to set the color for what they type next) — leave it
+    // alone rather than jumping back to an older, unrelated selection.
     const sel = window.getSelection();
-    if ((!sel.rangeCount || sel.getRangeAt(0).collapsed) && _savedRange) {
-        sel.removeAllRanges();
+    if (!sel.rangeCount && _savedRange) {
         sel.addRange(_savedRange);
     }
 

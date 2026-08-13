@@ -2,7 +2,7 @@
 // Single source of truth with pub/sub for state changes.
 // Modules subscribe to specific keys and are notified on change.
 
-import { DEFAULT_PALETTE, LS_KEYS } from './config.js';
+import { DEFAULT_PALETTE, DEFAULT_PUNCT_CHARS, LS_KEYS } from './config.js';
 
 const _listeners = new Map(); // key → Set<callback>
 
@@ -11,6 +11,7 @@ const _state = {
     activeTabId : null,
     isPagedMode : true,
     currentPalette: [...DEFAULT_PALETTE],
+    punctChars    : DEFAULT_PUNCT_CHARS,
 };
 
 /** Get a shallow clone of state (read-only snapshot). */
@@ -89,6 +90,12 @@ export function loadStateFromStorage() {
         if (pal) _state.currentPalette = JSON.parse(pal);
     } catch { /* keep default */ }
 
+    // Punctuation-color character set
+    try {
+        const chars = localStorage.getItem(LS_KEYS.PUNCT_CHARS);
+        if (chars) _state.punctChars = chars;
+    } catch { /* keep default */ }
+
     _state.isPagedMode = true;
     _notify('all', _state, null);
 }
@@ -107,6 +114,14 @@ export function savePaletteToStorage() {
         localStorage.setItem(LS_KEYS.PALETTE, JSON.stringify(_state.currentPalette));
     } catch (e) {
         console.error('Failed to save palette:', e);
+    }
+}
+
+export function savePunctCharsToStorage() {
+    try {
+        localStorage.setItem(LS_KEYS.PUNCT_CHARS, _state.punctChars);
+    } catch (e) {
+        console.error('Failed to save punctuation character set:', e);
     }
 }
 
