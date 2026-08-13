@@ -7,6 +7,7 @@ import { LS_KEYS } from '../config.js';
 
 export function initEffects(editor) {
     _initGlow(editor);
+    _initOutline(editor);
     _initChromaMorph(editor);
 }
 
@@ -21,54 +22,108 @@ function _selectionAncestorWithClass(className) {
     return node?.closest?.('.' + className) || null;
 }
 
-// ── Neon Glow ─────────────────────────────────────────────────────────────────
+/** Wires a color-toggle effect button (Neon Glow, Contorno): applies
+ *  `className` to the selection with `cssVar` set to the picked color,
+ *  updates it in place if a different color is picked while already
+ *  applied, or removes it if the same color is picked again.
+ *
+ *  Uses mousedown+preventDefault (like the color swatches in formatting.js)
+ *  plus a saved-selection fallback, so the toolbar button click doesn't
+ *  lose the selection before the handler runs — without that, a second
+ *  click meant to remove the effect would find nothing to act on. */
+function _initColorToggleEffect(editor, { btnId, colorInputId, colorIndicatorId, className, cssVar, pickerTitle, lsKey, defaultColor }) {
+    const colorInput     = $(colorInputId);
+    const colorIndicator = $(colorIndicatorId);
 
-function _initGlow(editor) {
-    const glowColorInput     = $('glow-color-input');
-    const glowColorIndicator = $('glow-color-indicator');
+    const saved = localStorage.getItem(lsKey) || defaultColor;
+    colorInput.value                    = saved;
+    colorIndicator.style.backgroundColor = saved;
 
-    const saved = localStorage.getItem(LS_KEYS.GLOW_COLOR) || '#ffffff';
-    glowColorInput.value                    = saved;
-    glowColorIndicator.style.backgroundColor = saved;
+    let savedRange = null;
+    document.addEventListener('selectionchange', () => {
+        const sel = window.getSelection();
+        if (!sel.rangeCount || sel.getRangeAt(0).collapsed) return;
+        const node = sel.anchorNode?.parentElement;
+        if (!node?.closest?.('.pixel-editor, .page-content')) return;
+        savedRange = sel.getRangeAt(0).cloneRange();
+    });
 
-    $('btn-glow-toggle').addEventListener('click', () => {
+    const btn = $(btnId);
+    btn.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+    });
+    btn.addEventListener('click', () => {
         try {
-            const existing = _selectionAncestorWithClass('neon-glow');
+            const sel = window.getSelection();
+            if (!sel.rangeCount && savedRange) {
+                sel.addRange(savedRange);
+            }
+
+            const existing = _selectionAncestorWithClass(className);
 
             if (existing) {
-                const currentColor = getComputedStyle(existing).getPropertyValue('--glow-color').trim();
-                if (currentColor.toLowerCase() === glowColorInput.value.toLowerCase()) {
-                    // Same color pressed again on already-glowing text -> remove it.
+                const currentColor = getComputedStyle(existing).getPropertyValue(cssVar).trim();
+                if (currentColor.toLowerCase() === colorInput.value.toLowerCase()) {
+                    // Same color pressed again on already-applied text -> remove it.
                     unwrapElement(existing);
                 } else {
-                    // A different color was picked -> update this highlight in place
-                    // instead of nesting a second wrapper around it.
-                    existing.style.setProperty('--glow-color', glowColorInput.value);
+                    // A different color was picked -> update this wrapper in place
+                    // instead of nesting a second one around it.
+                    existing.style.setProperty(cssVar, colorInput.value);
                 }
                 editor.focus();
                 syncActiveTabContent(editor);
                 return;
             }
 
-            const applied = wrapSelection('neon-glow', {
-                '--glow-color': glowColorInput.value,
-            });
+            const applied = wrapSelection(className, { [cssVar]: colorInput.value });
             if (!applied) { editor.focus(); return; }
             editor.focus();
             syncActiveTabContent(editor);
         } catch (e) {
             console.error(e);
-            alert('No se pudo aplicar el brillo. Intenta evitar cruzar saltos de línea largos.');
+            alert('No se pudo aplicar el efecto. Intenta evitar cruzar saltos de línea largos.');
             editor.focus();
         }
     });
 
-    $q('[data-target="glow-color-input"]').addEventListener('click', () => {
-        openColorPicker(glowColorInput.value, 'Color del Brillo', (hex) => {
-            glowColorInput.value                    = hex;
-            glowColorIndicator.style.backgroundColor = hex;
-            localStorage.setItem(LS_KEYS.GLOW_COLOR, hex);
+    $q(`[data-target="${colorInputId}"]`).addEventListener('click', () => {
+        openColorPicker(colorInput.value, pickerTitle, (hex) => {
+            colorInput.value                    = hex;
+            colorIndicator.style.backgroundColor = hex;
+            localStorage.setItem(lsKey, hex);
         });
+    });
+}
+
+// ── Neon Glow ─────────────────────────────────────────────────────────────────
+
+function _initGlow(editor) {
+    _initColorToggleEffect(editor, {
+        btnId           : 'btn-glow-toggle',
+        colorInputId    : 'glow-color-input',
+        colorIndicatorId: 'glow-color-indicator',
+        className       : 'neon-glow',
+        cssVar          : '--glow-color',
+        pickerTitle     : 'Color del Brillo',
+        lsKey           : LS_KEYS.GLOW_COLOR,
+        defaultColor    : '#ffffff',
+    });
+}
+
+// ── Contorno (pixel-font outline) ────────────────────────────────────────────
+
+function _initOutline(editor) {
+    _initColorToggleEffect(editor, {
+        btnId           : 'btn-outline-toggle',
+        colorInputId    : 'outline-color-input',
+        colorIndicatorId: 'outline-color-indicator',
+        className       : 'pixel-outline',
+        cssVar          : '--outline-color',
+        pickerTitle     : 'Color del Contorno',
+        lsKey           : LS_KEYS.OUTLINE_COLOR,
+        defaultColor    : '#000000',
     });
 }
 
