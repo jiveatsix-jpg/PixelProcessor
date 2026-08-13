@@ -1,6 +1,6 @@
 // ── Visual Effects: Glow & Chroma Morph ──────────────────────────────────────
 
-import { $, $q, wrapSelection } from '../utils/dom.js';
+import { $, $q, wrapSelection, unwrapElement } from '../utils/dom.js';
 import { openColorPicker } from './colorPicker.js';
 import { syncActiveTabContent } from '../state.js';
 import { LS_KEYS } from '../config.js';
@@ -8,6 +8,17 @@ import { LS_KEYS } from '../config.js';
 export function initEffects(editor) {
     _initGlow(editor);
     _initChromaMorph(editor);
+}
+
+/** Closest ancestor of the current selection's anchor with the given class,
+ *  or null. Lets the glow/chroma buttons act as a toggle instead of always
+ *  nesting a new wrapper inside whatever's already applied. */
+function _selectionAncestorWithClass(className) {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    let node = sel.anchorNode;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    return node?.closest?.('.' + className) || null;
 }
 
 // ── Neon Glow ─────────────────────────────────────────────────────────────────
@@ -22,10 +33,27 @@ function _initGlow(editor) {
 
     $('btn-glow-toggle').addEventListener('click', () => {
         try {
-            const wrapper = wrapSelection('neon-glow', {
+            const existing = _selectionAncestorWithClass('neon-glow');
+
+            if (existing) {
+                const currentColor = getComputedStyle(existing).getPropertyValue('--glow-color').trim();
+                if (currentColor.toLowerCase() === glowColorInput.value.toLowerCase()) {
+                    // Same color pressed again on already-glowing text -> remove it.
+                    unwrapElement(existing);
+                } else {
+                    // A different color was picked -> update this highlight in place
+                    // instead of nesting a second wrapper around it.
+                    existing.style.setProperty('--glow-color', glowColorInput.value);
+                }
+                editor.focus();
+                syncActiveTabContent(editor);
+                return;
+            }
+
+            const applied = wrapSelection('neon-glow', {
                 '--glow-color': glowColorInput.value,
             });
-            if (!wrapper) { editor.focus(); return; }
+            if (!applied) { editor.focus(); return; }
             editor.focus();
             syncActiveTabContent(editor);
         } catch (e) {
@@ -70,12 +98,24 @@ function _initChromaMorph(editor) {
 
     $('btn-apply-anim').addEventListener('click', () => {
         try {
-            const wrapper = wrapSelection('animated-color', {
+            const existing = _selectionAncestorWithClass('animated-color');
+            if (existing) {
+                // Re-applying to already-animated text updates it in place
+                // instead of nesting a second wrapper around it.
+                existing.style.setProperty('--color1', animColor1.value);
+                existing.style.setProperty('--color2', animColor2.value);
+                existing.style.setProperty('--anim-duration', animSpeed.value + 's');
+                editor.focus();
+                syncActiveTabContent(editor);
+                return;
+            }
+
+            const applied = wrapSelection('animated-color', {
                 '--color1'       : animColor1.value,
                 '--color2'       : animColor2.value,
                 '--anim-duration': animSpeed.value + 's',
             });
-            if (!wrapper) { editor.focus(); return; }
+            if (!applied) { editor.focus(); return; }
             editor.focus();
             syncActiveTabContent(editor);
         } catch (e) {

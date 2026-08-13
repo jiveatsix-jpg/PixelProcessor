@@ -13,6 +13,23 @@ export const on = (el, ev, fn) => el.addEventListener(ev, fn);
  * Wraps the current text selection inside a <span> with the given
  * className and optional inline styles object.
  * Returns the created wrapper, or null if no valid selection.
+ *
+ * NOTE on undo: this mutates the DOM directly (extractContents/insertNode)
+ * rather than going through document.execCommand('insertHTML', ...), which
+ * would otherwise be preferable since manual DOM mutation is invisible to
+ * the browser's native undo manager and breaks Ctrl+Z/Ctrl+Y for the rest of
+ * that editing session the first time it happens (see richTextEngine.js's
+ * _wrapRange, which *does* use execCommand for bold/italic/color/highlight).
+ * That path isn't usable here: Chrome's insertHTML sanitizer silently drops
+ * any inserted element whose only styling it doesn't recognize as a plain
+ * CSS property — which is exactly what this is used for (`--glow-color`
+ * custom properties for the neon-glow text-shadow effect, `animation` +
+ * `--color1/--color2` for the chroma-morph effect). Confirmed by hand: even
+ * a `<span style="text-shadow:...">` or `<span style="animation-name:...">`
+ * with no custom properties at all gets stripped entirely, so there's no
+ * styling-syntax workaround — only literal color/background-color/font-*
+ * survive. Effects built on this should keep the "toggle/recolor in place"
+ * pattern from effects.js instead of relying on undo for correctness.
  */
 export function wrapSelection(className, styles = {}) {
     const selection = window.getSelection();
@@ -30,6 +47,16 @@ export function wrapSelection(className, styles = {}) {
     range.insertNode(wrapper);
     selection.removeAllRanges();
     return wrapper;
+}
+
+/** Replaces `el` with its own contents (removing just the wrapper tag).
+ *  Manual DOM mutation, same undo caveat as wrapSelection above. */
+export function unwrapElement(el) {
+    if (!el || !el.parentNode) return;
+    const parent = el.parentNode;
+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+    parent.removeChild(el);
+    parent.normalize();
 }
 
 /**

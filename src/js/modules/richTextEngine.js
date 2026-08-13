@@ -21,26 +21,38 @@ function _isInsideTag(tagName) {
     return false;
 }
 
-/** Wrap all inline elements in the range with a new element. */
+/** camelCase -> kebab-case for a CSS property name (custom properties, which
+ *  are already kebab-case-ish and case-sensitive, pass through untouched). */
+function _cssPropName(key) {
+    return key.startsWith('--') ? key : key.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
+}
+
+/** Wrap all inline elements in the range with a new element.
+ *
+ *  Inserts via document.execCommand('insertHTML', ...) rather than manually
+ *  mutating the range (extractContents/insertNode/appendChild) — manual DOM
+ *  mutation is invisible to the browser's native undo manager and
+ *  permanently breaks Ctrl+Z/Ctrl+Y for the rest of the editing session the
+ *  first time it happens.
+ *
+ *  Only plain CSS properties survive this (color, background-color,
+ *  font-family, font-size, text-decoration...) — the browser's insertHTML
+ *  sanitizer silently drops any element whose only styling it doesn't
+ *  recognize (custom properties, text-shadow, animation, class names with
+ *  no matching declared style), so this path is not used for effects that
+ *  need those (see wrapSelection in utils/dom.js). */
 function _wrapRange(tag, styles = {}) {
     const range = _getRange();
     if (!range) return;
 
-    const frag = range.extractContents();
-    const el = document.createElement(tag);
-    Object.entries(styles).forEach(([k, v]) => {
-        if (k.startsWith('--')) {
-            el.style.setProperty(k, v);
-        } else {
-            el.style[k] = v;
-        }
-    });
-    el.appendChild(frag);
-    range.insertNode(el);
-    range.selectNodeContents(el);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
+    const container = document.createElement('div');
+    container.appendChild(range.cloneContents());
+
+    const styleStr = Object.entries(styles)
+        .map(([k, v]) => `${_cssPropName(k)}:${v}`)
+        .join(';');
+
+    document.execCommand('insertHTML', false, `<${tag} style="${styleStr}">${container.innerHTML}</${tag}>`);
 }
 
 /** Apply an inline style to the current selection. */
@@ -94,7 +106,9 @@ function _toggleItalic() {
     }
 }
 
-/** Remove wrappers of a specific tag from the selection area. */
+/** Remove wrappers of a specific tag from the selection area, via
+ *  execCommand so the undo history isn't broken by a manual DOM mutation
+ *  (see _wrapRange above for why that matters). */
 function _unwrapTag(tagName) {
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) return;
@@ -106,13 +120,11 @@ function _unwrapTag(tagName) {
     let el = node;
     while (el) {
         if (el.tagName?.toLowerCase() === tagName.toLowerCase()) {
-            const parent = el.parentNode;
-            while (el.firstChild) {
-                parent.insertBefore(el.firstChild, el);
-            }
-            parent.removeChild(el);
-            // Normalize to merge adjacent text nodes
-            parent.normalize();
+            const range = document.createRange();
+            range.selectNode(el);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            document.execCommand('insertHTML', false, el.innerHTML);
             return;
         }
         el = el.parentElement;
@@ -133,13 +145,69 @@ function _applyAlignment(value) {
     }
 }
 
-/** Apply highlight color to selection. */
+/** Closest ancestor (from the current selection's anchor) with the given
+ *  inline style property already set, or null. Used so re-applying
+ *  highlight/color toggles or recolors in place instead of always nesting a
+ *  new wrapper inside whatever's already there. */
+function _selectionAncestorWithStyle(property) {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    let node = sel.anchorNode;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    while (node && node.nodeType === Node.ELEMENT_NODE) {
+        if (node.style?.[property]) return node;
+        node = node.parentElement;
+    }
+    return null;
+}
+
+/** Normalizes any CSS color string (name, hex, rgb()) via canvas so two
+ *  different-looking values (e.g. 'yellow' vs 'rgb(255, 255, 0)') can be
+ *  compared for equality. */
+let _colorCtx = null;
+function _normalizeColor(color) {
+    _colorCtx = _colorCtx || document.createElement('canvas').getContext('2d');
+    _colorCtx.fillStyle = '#000000';
+    _colorCtx.fillStyle = color;
+    return _colorCtx.fillStyle;
+}
+
+/** Replaces `el` with its own contents via execCommand, so the undo history
+ *  isn't broken by a manual DOM mutation (see _wrapRange for why). */
+function _unwrapElement(el) {
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNode(el);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.execCommand('insertHTML', false, el.innerHTML);
+}
+
+/** Apply highlight color to selection — toggles off if the same color is
+ *  re-applied to already-highlighted text, or recolors it in place if a
+ *  different color was picked, instead of nesting a second wrapper. */
 function _applyHighlight(color) {
+    const existing = _selectionAncestorWithStyle('backgroundColor');
+    if (existing) {
+        if (_normalizeColor(existing.style.backgroundColor) === _normalizeColor(color)) {
+            _unwrapElement(existing);
+        } else {
+            existing.style.backgroundColor = color;
+        }
+        return;
+    }
     _wrapRange('mark', { backgroundColor: color });
 }
 
-/** Apply foreground color to selection. */
+/** Apply foreground color to selection — recolors in place if the
+ *  selection is already inside a colored span, instead of nesting a
+ *  second wrapper around it. */
 function _applyForeColor(color) {
+    const existing = _selectionAncestorWithStyle('color');
+    if (existing) {
+        existing.style.color = color;
+        return;
+    }
     _wrapRange('span', { color });
 }
 

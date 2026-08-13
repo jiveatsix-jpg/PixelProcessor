@@ -306,19 +306,61 @@ function _handleInput(e) {
     scheduleReflow(_pageIndexOf(contentEl));
 }
 
+// Tags stripped entirely (with their contents) from pasted HTML.
+const _PASTE_DANGEROUS_TAGS = 'script, iframe, object, embed, style, link, meta, img, svg, form, input, button, video, audio, source';
+
+/** Sanitizes clipboard HTML (removes scripts/embeds and any attribute other
+ *  than style/class — style/class are what carry bold/color/highlight/glow/
+ *  chroma-morph formatting) and splits it into per-line HTML strings. Returns
+ *  null if the HTML has no usable content, so the caller can fall back to
+ *  plain text. */
+function _sanitizedHtmlToLines(html) {
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    container.querySelectorAll(_PASTE_DANGEROUS_TAGS).forEach(el => el.remove());
+    container.querySelectorAll('*').forEach(el => {
+        for (const attr of Array.from(el.attributes)) {
+            const name = attr.name.toLowerCase();
+            if (name !== 'style' && name !== 'class') el.removeAttribute(attr.name);
+        }
+    });
+
+    // A selection crossing multiple lines copies the block-level wrappers
+    // (div/p) too — each becomes its own pasted line. A selection within a
+    // single line copies only inline content, which becomes one line.
+    const blockChildren = Array.from(container.children).filter(el => el.tagName === 'DIV' || el.tagName === 'P');
+    if (blockChildren.length > 0) return blockChildren.map(el => el.innerHTML);
+
+    const inlineHTML = container.innerHTML.trim();
+    return inlineHTML ? [inlineHTML] : null;
+}
+
 function _handlePaste(e) {
     const contentEl = e.target.closest?.('.page-content');
     if (!contentEl) return;
 
     e.preventDefault();
 
-    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-    if (!text) return;
+    const clipboardData = e.clipboardData || window.clipboardData;
+    const html = clipboardData.getData('text/html');
+    const text = clipboardData.getData('text/plain');
 
-    let lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-    // Strip trailing empty element from trailing newline
-    if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
-    if (lines.length === 0) return;
+    // Prefer the clipboard's HTML so rich formatting (bold, color, highlight,
+    // glow, chroma-morph) survives — e.g. copying styled text in one tab and
+    // pasting it into another, which previously always flattened to plain
+    // text. Falls back to plain text for pastes with no HTML (e.g. from a
+    // plain text editor) or where the HTML sanitizes down to nothing.
+    const lineHTMLs = html ? _sanitizedHtmlToLines(html) : null;
+
+    let lines = null;
+    if (!lineHTMLs) {
+        if (!text) return;
+        lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+        // Strip trailing empty element from trailing newline
+        if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+        if (lines.length === 0) return;
+    }
 
     // Get current line at cursor
     const sel = window.getSelection();
@@ -330,28 +372,42 @@ function _handlePaste(e) {
     const currentLine = startNode.closest('.editor-line');
     if (!currentLine) return;
 
-    // Save text before / after cursor (for splitting the current line)
+    // Save text before / after cursor (for splitting the current line).
+    // Note: this flattens any existing formatting on the CURRENT line at the
+    // split point (unchanged from before) — only the newly pasted content's
+    // own formatting is preserved.
     const textBefore = currentLine.textContent.slice(0, range.startOffset);
     const textAfter  = currentLine.textContent.slice(range.startOffset);
     currentLine.textContent = textBefore;
 
     // Create new line elements
     const frag = document.createDocumentFragment();
-    for (let i = 0; i < lines.length; i++) {
-        const div = document.createElement('div');
-        div.className = 'editor-line';
-        if (lines[i] === '') {
-            div.innerHTML = '<br>';
-        } else {
-            div.textContent = lines[i];
+    if (lineHTMLs) {
+        for (const lineHTML of lineHTMLs) {
+            const div = document.createElement('div');
+            div.className = 'editor-line';
+            div.innerHTML = lineHTML || '<br>';
+            frag.appendChild(div);
         }
-        frag.appendChild(div);
+    } else {
+        for (let i = 0; i < lines.length; i++) {
+            const div = document.createElement('div');
+            div.className = 'editor-line';
+            if (lines[i] === '') {
+                div.innerHTML = '<br>';
+            } else {
+                div.textContent = lines[i];
+            }
+            frag.appendChild(div);
+        }
     }
 
-    // Append remaining text after cursor to LAST pasted line
+    // Append remaining text after cursor to LAST pasted line — appendChild a
+    // text node rather than `textContent +=`, which would wipe out any rich
+    // content (spans/formatting) the last pasted line just got from the HTML.
     if (textAfter) {
         const last = frag.lastChild;
-        if (last) last.textContent += textAfter;
+        if (last) last.appendChild(document.createTextNode(textAfter));
     }
 
     // Insert after current line
