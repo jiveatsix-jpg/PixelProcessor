@@ -395,11 +395,37 @@ button {
 
 /* Always in paged mode - continuous mode styles removed */
 
+/* Hard-edged halo (duplicate silhouettes at 1-2px offsets, zero blur) instead
+   of a gaussian text-shadow blur — a real blur anti-aliases the glyph edges
+   and clashes with the pixel font; this stays crisp. One small blur layer on
+   top adds just a hint of ambient bleed without washing out the pixels. */
 .pixel-editor .neon-glow {
-    text-shadow: 0 0 6px var(--glow-color, currentColor), 0 0 12px var(--glow-color, currentColor);
+    text-shadow:
+        1px 0 0 var(--glow-color, currentColor),
+        -1px 0 0 var(--glow-color, currentColor),
+        0 1px 0 var(--glow-color, currentColor),
+        0 -1px 0 var(--glow-color, currentColor),
+        1px 1px 0 var(--glow-color, currentColor),
+        -1px -1px 0 var(--glow-color, currentColor),
+        1px -1px 0 var(--glow-color, currentColor),
+        -1px 1px 0 var(--glow-color, currentColor),
+        2px 0 0 var(--glow-color, currentColor),
+        -2px 0 0 var(--glow-color, currentColor),
+        0 2px 0 var(--glow-color, currentColor),
+        0 -2px 0 var(--glow-color, currentColor),
+        0 0 3px var(--glow-color, currentColor);
 }
 .pixel-editor .neon-glow img {
     box-shadow: 0 0 8px var(--glow-color, currentColor);
+}
+
+/* Contorno: classic pixel-font outline (4 hard diagonal offsets, zero blur) */
+.pixel-editor .pixel-outline {
+    text-shadow:
+        2px 2px 0 var(--outline-color, #000000),
+        -2px -2px 0 var(--outline-color, #000000),
+        2px -2px 0 var(--outline-color, #000000),
+        -2px 2px 0 var(--outline-color, #000000);
 }
 
 /* Base custom selection */

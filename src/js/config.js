@@ -39,6 +39,7 @@ export const LS_KEYS = {
     PALETTE       : 'pixelPalette',
     SAVED_PALETTES: 'pixelSavedPalettes',
     GLOW_COLOR    : 'pixelGlowColor',
+    OUTLINE_COLOR : 'pixelOutlineColor',
     PAGE_MODE     : 'pixelPageMode',
     MARGIN_Y      : 'pixelPageMarginY',
     MARGIN_X      : 'pixelPageMarginX',

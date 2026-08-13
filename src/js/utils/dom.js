@@ -45,7 +45,16 @@ export function wrapSelection(className, styles = {}) {
     }
     wrapper.appendChild(frag);
     range.insertNode(wrapper);
+
+    // Reselect the wrapped text (rather than clearing the selection) so a
+    // follow-up click on the same toggle button can detect and remove it —
+    // clearing it here was why "click again to remove the effect" silently
+    // did nothing, since the next click had no selection to check against.
+    const newRange = document.createRange();
+    newRange.selectNodeContents(wrapper);
     selection.removeAllRanges();
+    selection.addRange(newRange);
+
     return wrapper;
 }
 
