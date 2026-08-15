@@ -29,8 +29,21 @@ async function _exportPDF(editor) {
     const filename  = (activeDoc?.title || 'Documento') + '.pdf';
 
     console.log('PDF Export: Capturing pages...');
+    const pdf = await buildPdfFromCurrentPages();
+    if (!pdf) { alert('No hay páginas para exportar.'); return; }
+
+    await _savePdf(pdf, filename);
+    console.log('PDF Export: Completed');
+}
+
+// ── Build a jsPDF instance from whatever `.editor-page` elements are
+// currently in the DOM. Shared by the button-driven export above and the
+// headless auto-export path (headless.js) — keep both in sync by only
+// changing this function, never forking the capture logic.
+// Returns `null` if there are no pages to export.
+export async function buildPdfFromCurrentPages() {
     const pages = Array.from(document.querySelectorAll('.editor-page'));
-    if (!pages.length) { alert('No hay páginas para exportar.'); return; }
+    if (!pages.length) return null;
 
     // Letter size: 8.5 x 11 inches at 96 DPI = 816 x 1056 px
     const PAGE_W_PX = PAGE_WIDTH;
@@ -66,8 +79,7 @@ async function _exportPDF(editor) {
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, pdfW_in, pdfH_in);
     }
 
-    await _savePdf(pdf, filename);
-    console.log('PDF Export: Completed');
+    return pdf;
 }
 
 // ── Save the generated PDF, using a native save dialog when running in Tauri ──

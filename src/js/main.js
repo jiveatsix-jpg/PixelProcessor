@@ -12,6 +12,7 @@ import { initPersistence } from './modules/persistence.js';
 import { initPdfExport } from './modules/pdfExport.js';
 import { initGifExport } from './modules/gifExport.js';
 import { initZoom } from './modules/zoom.js';
+import { initHeadless } from './modules/headless.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const editor = document.getElementById('editor');
@@ -36,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     safeInit('PdfExport',   () => initPdfExport(editor));
     safeInit('GifExport',   () => initGifExport());
     safeInit('Zoom',        () => initZoom(document.getElementById('editor-container')));
+    safeInit('Headless',    () => initHeadless());
 
     const btnNewGrid = document.getElementById('btn-new-grid');
     if (btnNewGrid) btnNewGrid.addEventListener('click', newGridDocument);
