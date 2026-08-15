@@ -27,9 +27,15 @@ export async function initHeadless() {
         if (document.fonts && document.fonts.ready) {
             await document.fonts.ready;
         }
-        // Let the reflow that fonts.ready triggers (see pageMode.js) actually
-        // paint before capturing.
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        // A long article can take several reflow passes to finish paginating
+        // (pageMode.js's push/pull-back cascades page by page) — two frames
+        // is enough for a short test document but not necessarily for a real
+        // multi-page article. Poll until the page count stops changing
+        // instead of assuming a fixed number of frames is always enough.
+        // (A separate, now-fixed CSS bug — missing flex-shrink:0 on
+        // .editor-line — was the actual cause of overlapping text in early
+        // testing; this wait is a legitimate safety margin regardless.)
+        await _waitForPaginationToSettle();
 
         const pdf = await buildPdfFromCurrentPages();
         if (!pdf) throw new Error('Headless export: no pages to export.');
@@ -47,6 +53,35 @@ export async function initHeadless() {
     } catch (err) {
         console.error('Headless export failed:', err);
     }
+}
+
+/** Waits until the number of `.editor-page` elements (and each page's
+ *  scrollHeight) stops changing across consecutive animation frames, up to
+ *  a hard cap — pagination reflow can cascade across several frames for a
+ *  long article, and capturing mid-cascade produces overlapping text (a
+ *  page captured before overflow content was pushed to the next page). */
+async function _waitForPaginationToSettle() {
+    const STABLE_FRAMES_NEEDED = 3;
+    const MAX_FRAMES = 60; // ~1s at 60fps — generous upper bound, never hangs forever
+
+    const snapshot = () => Array.from(document.querySelectorAll('.editor-page')).map(
+        page => page.querySelector('.page-content')?.scrollHeight ?? 0
+    ).join(',');
+
+    let stableCount = 0;
+    let last = snapshot();
+    for (let frame = 0; frame < MAX_FRAMES; frame++) {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        const current = snapshot();
+        if (current === last) {
+            stableCount++;
+            if (stableCount >= STABLE_FRAMES_NEEDED) return;
+        } else {
+            stableCount = 0;
+            last = current;
+        }
+    }
+    console.warn('Headless: pagination did not settle within the frame budget, capturing anyway.');
 }
 
 function _formatTimestamp(d) {

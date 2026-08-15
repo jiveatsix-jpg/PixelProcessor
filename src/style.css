@@ -361,6 +361,18 @@ button {
     display: block;
     tab-size: 4;
     -moz-tab-size: 4;
+    /* .page-content is a column flex container (see .page-content above) with a
+     * fixed height. Flex items default to flex-shrink:1, so once total content
+     * height exceeds the page, the browser silently SQUISHES every line to fit
+     * instead of letting it overflow — offsetHeight then reports the squished
+     * (wrong, too-small) box height instead of the real content height, which
+     * made the reflow engine in pageMode.js (_findOverflowIndex/_pushOverflow,
+     * which measure offsetHeight) blind to overflow that was actually there,
+     * leaving squished/overlapping text on the page instead of pushing it
+     * forward. flex-shrink:0 forces lines to keep their natural content
+     * height so real overflow is genuinely visible to both the browser
+     * (clientHeight/scrollHeight) and the reflow measurements. */
+    flex-shrink: 0;
 }
 
 /* The gap between pages */
