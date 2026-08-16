@@ -85,8 +85,11 @@ async function _waitForPaginationToSettle() {
 }
 
 function _formatTimestamp(d) {
-    const pad = n => String(n).padStart(2, '0');
+    const pad = (n, len = 2) => String(n).padStart(len, '0');
     const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    const time = `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+    // Milliseconds included so concurrent exports from the same batch (a
+    // realistic case — see Pixel News automation) never collide on a
+    // second-resolution filename and silently overwrite each other's PDF.
+    const time = `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}-${pad(d.getMilliseconds(), 3)}`;
     return `${date}_${time}`;
 }
