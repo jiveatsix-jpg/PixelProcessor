@@ -14,6 +14,7 @@ import { initGifExport } from './modules/gifExport.js';
 import { initZoom } from './modules/zoom.js';
 import { initHeadless } from './modules/headless.js';
 import { initTutorial } from './modules/tutorial.js';
+import { initInfoTooltip } from './modules/infoTooltip.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const editor = document.getElementById('editor');
@@ -40,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     safeInit('Zoom',        () => initZoom(document.getElementById('editor-container')));
     safeInit('Headless',    () => initHeadless());
     safeInit('Tutorial',    () => initTutorial());
+    safeInit('InfoTooltip', () => initInfoTooltip());
 
     const btnNewGrid = document.getElementById('btn-new-grid');
     if (btnNewGrid) btnNewGrid.addEventListener('click', newGridDocument);

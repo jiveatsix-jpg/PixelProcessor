@@ -97,6 +97,33 @@ button {
 }
 .help-btn:hover { filter: brightness(1.15); }
 
+.info-toggle {
+    background-color: var(--bg-color);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    margin-top: 6px;
+}
+.info-toggle.active {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+}
+
+.info-tooltip-box {
+    position: fixed;
+    z-index: 300;
+    max-width: 260px;
+    padding: 10px 12px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--accent-color);
+    box-shadow: 3px 3px 0 var(--shadow-color);
+    font-family: var(--font-secondary);
+    font-size: 14px;
+    line-height: 1.4;
+    pointer-events: none;
+}
+.info-tooltip-box.hidden { display: none; }
+
 .tutorial-dot {
     width: 9px;
     height: 9px;
