@@ -115,14 +115,21 @@ button {
     padding: 10px 12px;
     background-color: var(--bg-color);
     color: var(--text-color);
-    border: 2px solid var(--accent-color);
-    box-shadow: 3px 3px 0 var(--shadow-color);
-    font-family: var(--font-secondary);
-    font-size: 14px;
+    border: 2px solid #4ECDC4;
+    box-shadow: 4px 4px 0 var(--shadow-color);
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 13px;
     line-height: 1.4;
     pointer-events: none;
 }
 .info-tooltip-box.hidden { display: none; }
+.info-tooltip-label {
+    font-weight: bold;
+    color: var(--accent-color);
+    border-bottom: 2px solid #4ECDC4;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+}
 
 .tutorial-dot {
     width: 9px;

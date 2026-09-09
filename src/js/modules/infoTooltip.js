@@ -70,12 +70,24 @@ function ensureBox() {
     return boxEl;
 }
 
+function labelFromId(id) {
+    return id.replace(/^btn-/, '').replace(/-/g, ' ').toUpperCase();
+}
+
 function showFor(id, x, y) {
     const text = INFO_MAP[id];
     if (!text) { hide(); return; }
     currentId = id;
     const box = ensureBox();
-    box.textContent = text;
+    box.textContent = '';
+    const labelEl = document.createElement('div');
+    labelEl.className = 'info-tooltip-label';
+    labelEl.textContent = labelFromId(id);
+    box.appendChild(labelEl);
+    const textEl = document.createElement('div');
+    textEl.className = 'info-tooltip-text';
+    textEl.textContent = text;
+    box.appendChild(textEl);
     box.classList.remove('hidden');
     position(x, y);
 }
