@@ -1,15 +1,17 @@
 // ── State Module Tests ────────────────────────────────────────────────────────
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// We need to mock the config module before importing state
-vi.doMock('/js/config.js', () => ({
-    DEFAULT_PALETTE: ['#F0F0F0', '#FF6B6B', '#4ECDC4'],
-    LS_KEYS: {
-        DOCUMENTS: 'pixelDocuments',
-        OLD_CONTENT: 'pixelWordContent',
-        PALETTE: 'pixelPalette',
-    },
-}));
+// We need to mock the config module before importing state. Only override
+// what the tests actually care about (a short, predictable palette) — pull
+// everything else (DEFAULT_PUNCT_CHARS, the full LS_KEYS map, etc.) from the
+// real module so new config exports don't silently break this file.
+vi.doMock('/js/config.js', async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+        ...actual,
+        DEFAULT_PALETTE: ['#F0F0F0', '#FF6B6B', '#4ECDC4'],
+    };
+});
 
 const { getState, get, set, subscribe, mutate, state, loadStateFromStorage, saveDocumentsToStorage } = await import('/js/state.js');
 
