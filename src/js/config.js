@@ -44,4 +44,5 @@ export const LS_KEYS = {
     MARGIN_Y      : 'pixelPageMarginY',
     MARGIN_X      : 'pixelPageMarginX',
     PUNCT_CHARS   : 'pixelPunctChars',
+    TUTORIAL_SEEN : 'pixelHasSeenTutorial',
 };

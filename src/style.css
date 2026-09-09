@@ -83,6 +83,31 @@ button {
     text-shadow: 2px 2px 0 var(--shadow-color);
 }
 
+.help-btn {
+    display: block;
+    margin: 12px auto 0;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    border: 2px solid var(--shadow-color);
+    box-shadow: 2px 2px 0 var(--shadow-color);
+    font-size: 12px;
+}
+.help-btn:hover { filter: brightness(1.15); }
+
+.tutorial-dot {
+    width: 9px;
+    height: 9px;
+    background-color: var(--bg-color);
+    border: 2px solid var(--border-color);
+}
+.tutorial-dot.active {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
 .sidebar nav {
     display: flex;
     flex-direction: column;

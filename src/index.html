@@ -17,6 +17,7 @@
             <div class="logo">
                 <span class="logo-text">PIXEL</span>
                 <span class="logo-subtext">WORD</span>
+                <button id="btn-help" class="help-btn" type="button" title="Ver tutorial">?</button>
             </div>
             <nav>
                 <button id="btn-new" class="sidebar-btn" title="New Document">
@@ -357,6 +358,23 @@
                 <button id="btn-cancel-style" class="pixel-btn">Cancelar</button>
                 <button id="btn-confirm-style" class="pixel-btn accent-btn">Aplicar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div id="tutorial-modal" class="modal hidden">
+        <div class="modal-content" style="width: 420px; position: relative;">
+            <p id="tutorial-step-label" style="font-family: var(--font-secondary); font-size: 12px; color: var(--text-color-dim); margin-bottom: 8px;">PASO 1 DE 6</p>
+            <h3 id="tutorial-title"></h3>
+            <p id="tutorial-text" style="font-family: var(--font-secondary); font-size: 15px; line-height: 1.6; min-height: 110px;"></p>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
+                <div id="tutorial-dots" style="display: flex; gap: 6px;"></div>
+                <div class="modal-actions" style="margin: 0;">
+                    <button id="btn-tutorial-prev" class="pixel-btn">ATRÁS</button>
+                    <button id="btn-tutorial-next" class="pixel-btn accent-btn">SIGUIENTE</button>
+                </div>
+            </div>
+            <button id="btn-tutorial-close" class="pixel-btn" style="position: absolute; top: 10px; right: 10px; padding: 4px 8px;" title="Cerrar">✕</button>
         </div>
     </div>
 
