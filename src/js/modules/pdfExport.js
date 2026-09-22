@@ -119,12 +119,26 @@ export async function captureElement(el, w, h, scale = PDF_SCALE) {
     const allEls    = Array.from(el.querySelectorAll('*'));
     const savedElStyles = allEls.map(child => {
         const ccs  = getComputedStyle(child);
-        const s    = { child, bg: child.style.backgroundColor, color: child.style.color };
+        const s    = {
+            child,
+            bg:              child.style.backgroundColor,
+            color:           child.style.color,
+            borderTopColor:    child.style.borderTopColor,
+            borderRightColor:  child.style.borderRightColor,
+            borderBottomColor: child.style.borderBottomColor,
+            borderLeftColor:   child.style.borderLeftColor,
+        };
         const cbg  = ccs.backgroundColor;
         if (cbg && cbg !== 'rgba(0, 0, 0, 0)' && cbg !== 'transparent') {
             child.style.backgroundColor = cbg;
         }
         child.style.color = ccs.color;
+        // border-color can be a CSS var (e.g. table cell borders); html2canvas
+        // doesn't resolve var() reliably, so bake in the computed values.
+        child.style.borderTopColor    = ccs.borderTopColor;
+        child.style.borderRightColor  = ccs.borderRightColor;
+        child.style.borderBottomColor = ccs.borderBottomColor;
+        child.style.borderLeftColor   = ccs.borderLeftColor;
         return s;
     });
 
@@ -143,9 +157,13 @@ export async function captureElement(el, w, h, scale = PDF_SCALE) {
     } finally {
         el.style.backgroundColor = prevBg;
         el.style.color           = prevCol;
-        savedElStyles.forEach(({ child, bg: b, color }) => {
-            child.style.backgroundColor = b;
-            child.style.color           = color;
+        savedElStyles.forEach(({ child, bg: b, color, borderTopColor, borderRightColor, borderBottomColor, borderLeftColor }) => {
+            child.style.backgroundColor   = b;
+            child.style.color             = color;
+            child.style.borderTopColor    = borderTopColor;
+            child.style.borderRightColor  = borderRightColor;
+            child.style.borderBottomColor = borderBottomColor;
+            child.style.borderLeftColor   = borderLeftColor;
         });
     }
     return canvas;
